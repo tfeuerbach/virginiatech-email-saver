@@ -1,9 +1,12 @@
 import os
+from datetime import datetime
 from flask import Flask, render_template, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from kms.kms_manager import KMSManager
 from web.database import db
 from web.models import EncryptedCredential
+from web.vt_google_login import login_to_google
+
 
 # Define the instance path
 instance_path = os.path.join(os.path.dirname(__file__), "instance")
@@ -44,13 +47,39 @@ def submit():
     plaintext_credentials = f"{vt_email},{vt_username},{vt_password}"
     encrypted_credentials = kms_manager.encrypt(plaintext_credentials)
 
-    # Save encrypted data to the database
-    credential = EncryptedCredential(vt_email=vt_email, encrypted_key=encrypted_credentials)
-    db.session.add(credential)
-    db.session.commit()
+    # Check if the email already exists in the database
+    existing_credential = EncryptedCredential.query.filter_by(vt_email=vt_email).first()
+
+    if existing_credential:
+        # Update the existing record
+        existing_credential.encrypted_key = encrypted_credentials
+        existing_credential.created_at = datetime.utcnow()
+        db.session.commit()
+        message = "Credentials updated successfully!"
+    else:
+        # Insert new record if it doesn't exist
+        new_credential = EncryptedCredential(
+            vt_email=vt_email,
+            encrypted_key=encrypted_credentials,
+            created_at=datetime.utcnow(),
+        )
+        db.session.add(new_credential)
+        db.session.commit()
+        message = "Credentials encrypted and saved successfully!"
+
+    # Attempt to log in immediately
+    try:
+        login_success = login_to_google(vt_email, vt_username, vt_password)
+        if login_success:
+            message += " Login attempt successful."
+        else:
+            message += " Login attempt failed. Please check your credentials."
+    except Exception as e:
+        message += f" Login attempt failed with error: {e}"
+
+    return jsonify({"message": message})
 
     return jsonify({"message": "Credentials encrypted and saved successfully!"})
-
 # Start the Flask app
 if __name__ == "__main__":
     app.run(debug=True, host="127.0.0.1", port=5000)

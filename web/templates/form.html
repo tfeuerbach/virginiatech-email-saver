@@ -3,21 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VT Gmail Login</title>
+    <title>Virginia Tech Email Saver</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700&display=swap">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <h1>Submit Your VT Gmail Credentials</h1>
-    <form action="/submit" method="post">
-        <label for="vt_email">VT Email:</label><br>
-        <input type="email" id="vt_email" name="vt_email" required><br><br>
-        
-        <label for="vt_username">VT Username:</label><br>
-        <input type="text" id="vt_username" name="vt_username" required><br><br>
-        
-        <label for="vt_password">VT Password:</label><br>
-        <input type="password" id="vt_password" name="vt_password" required><br><br>
-        
-        <button type="submit">Submit</button>
-    </form>
+    <div class="container">
+        <h1>Virginia Tech Email Saver</h1>
+        <p>
+            This service automates logging into your Virginia Tech Gmail account 
+            every 25 days to keep it active. Enter your credentials below to get started.
+        </p>
+        <form action="/submit" method="POST">
+            <input type="email" name="vt_email" placeholder="Virginia Tech Email" required>
+            <input type="text" name="vt_username" placeholder="VT Username" required>
+            <input type="password" name="vt_password" placeholder="VT Password" required>
+            <button type="submit">Submit</button>
+        </form>
+        <footer>
+            Created by <a href="https://github.com/tfeuerbach" target="_blank">Thomas Feuerbach</a>.
+        </footer>
+    </div>
 </body>
 </html>
