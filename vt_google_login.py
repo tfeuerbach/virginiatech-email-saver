@@ -7,9 +7,9 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC  
 
 # Your credentials
-GMAIL_EMAIL = "thomashf@vt.edu"
-VT_USERNAME = "thomashf"
-VT_PASSWORD = "Virginiatechhokies4u!1"
+GMAIL_EMAIL = "email@vt.edu"
+VT_USERNAME = "user"
+VT_PASSWORD = "pass"
 
 # Enable detailed ChromeDriver logs
 service = Service("/usr/local/bin/chromedriver", service_args=["--verbose", "--log-path=chromedriver.log"])
