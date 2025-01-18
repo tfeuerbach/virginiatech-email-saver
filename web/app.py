@@ -127,9 +127,12 @@ def dashboard():
 
 @app.route("/update_progress", methods=["POST"])
 def update_progress():
-    """Update the progress of the animation."""
     global progress_updates
     step = request.json.get("step", 0)
+
+    if step == 4 and progress_updates["step"] < 4:
+        print("Login confirmed. Updating to step 4.")
+    
     progress_updates["step"] = step
     return jsonify({"status": "updated", "current_step": step})
 
@@ -141,14 +144,17 @@ def get_progress():
 
 @app.route("/confirm_login", methods=["POST"])
 def confirm_login():
-    """Confirm the login success after progress step 4."""
     email = request.json.get("email")
     credential = EncryptedCredential.query.filter_by(vt_email=email).first()
 
     if not credential or not credential.last_login:
         return jsonify({"success": False, "message": "Login not confirmed or user not found."})
 
-    return jsonify({"success": True, "message": "Login confirmed."})
+    # Ensure step 4 is reached before confirming login
+    if progress_updates["step"] == 4:
+        return jsonify({"success": True, "message": "Login confirmed."})
+    else:
+        return jsonify({"success": False, "message": "Login in progress."})
 
 # Start the Flask app
 if __name__ == "__main__":

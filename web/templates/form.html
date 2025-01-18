@@ -6,8 +6,7 @@
     <title>Virginia Tech Email Saver</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;700&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.9.1/lottie.min.js"></script>
-    <script src="https://unpkg.com/@lottiefiles/lottie-player@1.5.6/dist/lottie-player.min.js"></script>
+    <script src="https://unpkg.com/@dotlottie/player-component@2.7.12/dist/dotlottie-player.mjs" type="module"></script>
 </head>
 <body>
     <div class="container">
@@ -15,51 +14,50 @@
         <div id="animation-container" class="hidden">
             <div id="storing-credentials" class="animation hidden">
                 <h2>Storing your credentials securely...</h2>
-                <lottie-player
-                    id="storing-animation"
-                    src="/static/animations/storing.json"
-                    background="transparent"
-                    speed="1"
-                    loop
-                    autoplay
-                    style="width: 300px; height: 300px;">
-                </lottie-player>
+                <dotlottie-player 
+                    src="https://lottie.host/ab51dd0c-fb37-4af6-87c4-b38ad86dad02/0a9TEhb5a7.lottie"
+                    background="transparent" 
+                    speed="1" 
+                    style="width: 300px; height: 300px" 
+                    loop 
+                    autoplay>
+                </dotlottie-player>
             </div>
-            <div id="attempting-login" class="animation hidden">
-                <h2>Attempting to log in...</h2>
-                <lottie-player
-                    id="login-animation"
-                    src="/static/animations/login.json"
-                    background="transparent"
-                    speed="1"
-                    loop
-                    autoplay
-                    style="width: 300px; height: 300px;">
-                </lottie-player>
-            </div>
+<!-- Comment out the login animation -->
+<!--
+<div id="attempting-login" class="animation hidden">
+    <h2>Attempting to log in...</h2>
+    <dotlottie-player
+        src="https://lottie.host/3c457af7-61e6-477c-979d-1562c6c9efe8/yM8sid1hot.lottie"
+        background="transparent"
+        speed="1"
+        style="width: 300px; height: 300px"
+        loop
+        autoplay>
+    </dotlottie-player>
+</div>
+-->
             <div id="push-notification" class="animation hidden">
                 <h2>Sending a push notification to your device...</h2>
-                <lottie-player
-                    id="push-animation"
-                    src="/static/animations/push.json"
-                    background="transparent"
-                    speed="1"
-                    loop
-                    autoplay
-                    style="width: 300px; height: 300px;">
-                </lottie-player>
+                <dotlottie-player 
+                    src="https://lottie.host/8a9d29dc-29d9-4640-902d-279f4e6e7065/5EivasZcWd.lottie"
+                    background="transparent" 
+                    speed="1" 
+                    style="width: 300px; height: 300px" 
+                    loop 
+                    autoplay>
+                </dotlottie-player>
             </div>
             <div id="success" class="animation hidden">
                 <h2>Success!</h2>
-                <lottie-player
-                    id="success-animation"
-                    src="/static/animations/success.json"
-                    background="transparent"
-                    speed="1"
-                    loop
-                    autoplay
-                    style="width: 300px; height: 300px;">
-                </lottie-player>
+                <dotlottie-player 
+                    src="https://lottie.host/588ea9d1-e0c7-4fca-91e9-360ea89bcc10/AzcUHnoUuK.lottie"
+                    background="transparent" 
+                    speed="1" 
+                    style="width: 300px; height: 300px" 
+                    loop 
+                    autoplay>
+                </dotlottie-player>
             </div>
         </div>
 
@@ -85,10 +83,9 @@
 
     <script src="{{ url_for('static', filename='js/animations.js') }}"></script>
     <script>
-        let redirectTriggered = false; // To ensure redirection happens only once
-        let currentStep = 0; // Track progress steps
+        let redirectTriggered = false; // Prevent multiple redirections
+        let currentStep = 0; // Track current progress step
     
-        // Poll progress
         function pollProgress() {
             fetch("/get_progress")
                 .then(response => response.json())
@@ -98,11 +95,14 @@
                         currentStep = step;
                         showProgressStep(step); // Update animations
                     }
+    
+                    if (step === 4 && !redirectTriggered) {
+                        pollLoginStatus(); // Check final login confirmation
+                    }
                 })
                 .catch(error => console.error("Error polling progress:", error));
         }
     
-        // Poll for login status
         function pollLoginStatus() {
             fetch("/confirm_login", {
                 method: "POST",
@@ -112,10 +112,11 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.success && !redirectTriggered) {
-                        redirectTriggered = true;
+                        redirectTriggered = true; // Prevent further redirects
                         setTimeout(() => {
-                            window.location.href = `/dashboard?email=${encodeURIComponent(document.getElementById("vt_email").value)}`;
-                        }, 1500); // Allow animations to complete
+                            const email = document.getElementById("vt_email").value;
+                            window.location.href = `/dashboard?email=${encodeURIComponent(email)}`;
+                        }, 2000); // Allow animations to complete
                     }
                 })
                 .catch(error => console.error("Error checking login status:", error));
@@ -135,24 +136,11 @@
                     vt_password: document.getElementById("vt_password").value
                 })
             })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.redirect_url && !redirectTriggered) {
-                        redirectTriggered = true;
-                        setTimeout(() => {
-                            window.location.href = data.redirect_url; // Redirect to /dashboard?email
-                        }, 1500); // Delay for animations
-                    } else if (data.error) {
-                        console.error("Error:", data.error);
-                        alert(data.error); // Notify the user
-                        location.reload(); // Reset the form
-                    }
+                .then(() => {
+                    setInterval(pollProgress, 1000); // Poll progress updates
                 })
                 .catch(error => console.error("Error submitting form:", error));
-    
-            setInterval(pollProgress, 1000); // Poll animations
-            setInterval(pollLoginStatus, 1000); // Poll login status
         });
-    </script>     
+    </script>
 </body>
 </html>

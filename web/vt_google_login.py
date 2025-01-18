@@ -74,7 +74,6 @@ def login_to_google(email, username, password):
             time.sleep(5)
             current_url = driver.current_url
 
-            # Step 4a: Check for "Yes, this is my device" prompt
             if "duosecurity.com" in current_url and not duo_prompt_handled:
                 try:
                     yes_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//button[contains(text(),'Yes, this is my device')]")))
@@ -82,12 +81,11 @@ def login_to_google(email, username, password):
                     duo_prompt_handled = True
                     print("Clicked 'Yes, this is my device'.")
                 except Exception as e:
-                    print(f"Error handling 'Yes, this is my device': {e}")
+                    print(f"Error handling Duo prompt: {e}")
 
-            # Step 4b: Check if login is complete (redirected to Gmail)
             if "mail.google.com" in current_url:
                 update_progress(4)  # Success
-                print(f"Login successful for {email}!")  # Output the success message here
+                print(f"Login successful for {email}!")
                 return True
 
         print(f"Duo push not accepted for {email}.")

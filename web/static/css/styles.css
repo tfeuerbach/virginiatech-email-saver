@@ -25,18 +25,33 @@ body {
 
 .hidden {
     opacity: 0;
-    transform: scale(0.9);
     pointer-events: none;
+    transition: opacity 0.3s ease-in-out;
 }
 
 /* Animations */
 .animation {
-    display: none;
+    display: none; /* Ensure animations are hidden initially */
     text-align: center;
+    position: absolute; /* Prevent animations from pushing other elements */
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 300px; /* Ensure consistent width */
+    height: 300px; /* Ensure consistent height */
 }
 
+/* Ensure the animation container doesn't affect the form layout */
+#animation-container {
+    position: relative; /* Avoid affecting the form */
+    height: 0; /* Collapse space when hidden */
+    overflow: hidden; /* Prevent overflow issues */
+}
+
+
 .animation.visible {
-    display: block;
+    opacity: 1;
+    pointer-events: auto;
 }
 
 h1, h2 {
