@@ -1,12 +1,11 @@
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask import Flask, render_template, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from kms.kms_manager import KMSManager
 from web.database import db
 from web.models import EncryptedCredential
 from web.vt_google_login import login_to_google
-
 
 # Define the instance path
 instance_path = os.path.join(os.path.dirname(__file__), "instance")
@@ -28,6 +27,9 @@ db.init_app(app)
 with app.app_context():
     db.create_all()
 
+# Global variable to track progress
+progress_updates = {"step": 0}
+
 kms_manager = KMSManager()
 
 @app.route("/", methods=["GET"])
@@ -36,9 +38,17 @@ def index():
 
 @app.route("/submit", methods=["POST"])
 def submit():
-    vt_email = request.form.get("vt_email")
-    vt_username = request.form.get("vt_username")
-    vt_password = request.form.get("vt_password")
+    print("Form submitted!")  # Debug print
+    
+    # Parse JSON data from the request
+    try:
+        data = request.get_json()
+        vt_email = data.get("vt_email")
+        vt_username = data.get("vt_username")
+        vt_password = data.get("vt_password")
+    except Exception as e:
+        print(f"Error parsing JSON: {e}")
+        return jsonify({"error": "Invalid JSON payload"}), 400
 
     if not (vt_email and vt_username and vt_password):
         return jsonify({"error": "All fields are required"}), 400
@@ -51,13 +61,11 @@ def submit():
     existing_credential = EncryptedCredential.query.filter_by(vt_email=vt_email).first()
 
     if existing_credential:
-        # Update the existing record
         existing_credential.encrypted_key = encrypted_credentials
         existing_credential.created_at = datetime.utcnow()
         db.session.commit()
         message = "Credentials updated successfully!"
     else:
-        # Insert new record if it doesn't exist
         new_credential = EncryptedCredential(
             vt_email=vt_email,
             encrypted_key=encrypted_credentials,
@@ -69,17 +77,79 @@ def submit():
 
     # Attempt to log in immediately
     try:
+        print("Attempting to log in...")
         login_success = login_to_google(vt_email, vt_username, vt_password)
         if login_success:
-            message += " Login attempt successful."
+            if existing_credential:
+                existing_credential.last_login = datetime.utcnow()
+                db.session.commit()
+            else:
+                new_credential.last_login = datetime.utcnow()
+                db.session.commit()
+
+            return jsonify({
+                "message": f"{message} Login attempt successful.",
+                "redirect_url": f"/dashboard?email={vt_email}"
+            })
         else:
             message += " Login attempt failed. Please check your credentials."
     except Exception as e:
+        print(f"Error during login: {e}")
         message += f" Login attempt failed with error: {e}"
 
     return jsonify({"message": message})
 
-    return jsonify({"message": "Credentials encrypted and saved successfully!"})
+@app.route("/dashboard", methods=["GET"])
+def dashboard():
+    email = request.args.get("email")  # Get email from query params
+
+    if not email:  # If no email is provided, redirect back to the form
+        return render_template("form.html", error="No email provided. Please submit the form again.")
+
+    credential = EncryptedCredential.query.filter_by(vt_email=email).first()
+
+    if not credential:  # If user not found, redirect back to the form
+        return render_template("form.html", error="User not found. Please try again.")
+
+    decrypted_credentials = kms_manager.decrypt(credential.encrypted_key)
+    username, _ = decrypted_credentials.split(",")[1:]  # Extract username only
+    next_login = credential.last_login + timedelta(days=25) if credential.last_login else None
+
+    # Render the dashboard with user data
+    return render_template(
+        "dashboard.html",
+        vt_email=credential.vt_email,
+        username=username,
+        last_login=credential.last_login.strftime("%B %d, %Y, %I:%M %p"),
+        next_login=next_login.strftime("%B %d, %Y, %I:%M %p") if next_login else None,
+    )
+
+
+@app.route("/update_progress", methods=["POST"])
+def update_progress():
+    """Update the progress of the animation."""
+    global progress_updates
+    step = request.json.get("step", 0)
+    progress_updates["step"] = step
+    return jsonify({"status": "updated", "current_step": step})
+
+@app.route("/get_progress", methods=["GET"])
+def get_progress():
+    """Retrieve the current progress."""
+    print(f"Current progress step: {progress_updates['step']}")  # Log current progress
+    return jsonify(progress_updates)
+
+@app.route("/confirm_login", methods=["POST"])
+def confirm_login():
+    """Confirm the login success after progress step 4."""
+    email = request.json.get("email")
+    credential = EncryptedCredential.query.filter_by(vt_email=email).first()
+
+    if not credential or not credential.last_login:
+        return jsonify({"success": False, "message": "Login not confirmed or user not found."})
+
+    return jsonify({"success": True, "message": "Login confirmed."})
+
 # Start the Flask app
 if __name__ == "__main__":
     app.run(debug=True, host="127.0.0.1", port=5000)

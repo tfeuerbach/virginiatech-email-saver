@@ -10,6 +10,7 @@ from selenium.webdriver.common.action_chains import ActionChains
 from kms.kms_manager import KMSManager
 from web.database import db
 from web.models import EncryptedCredential
+import requests
 from flask import Flask
 import schedule
 import os
@@ -32,10 +33,17 @@ service = Service("/usr/local/bin/chromedriver")
 options = Options()
 options.add_argument("--no-sandbox")
 options.add_argument("--disable-dev-shm-usage")
-options.add_argument("--headless")  # Run in headless mode for automation
+# options.add_argument("--headless")  # Uncomment to run in headless mode
 options.add_argument("--remote-debugging-port=9222")
 options.add_argument("--window-size=1920,1080")
 options.binary_location = "/snap/bin/chromium"
+
+def update_progress(step):
+    """Send progress updates to the server."""
+    try:
+        requests.post("http://127.0.0.1:5000/update_progress", json={"step": step})
+    except Exception as e:
+        print(f"Failed to send progress update: {e}")
 
 def login_to_google(email, username, password):
     """Automate login to Gmail."""
@@ -43,36 +51,43 @@ def login_to_google(email, username, password):
     wait = WebDriverWait(driver, 20)
 
     try:
-        # Step 1: Go to Gmail
+        # Step 1: Start progress
+        update_progress(1)  # Storing credentials
+
+        # Step 2: Go to Gmail
         driver.get("https://mail.google.com")
+        update_progress(2)  # Attempting login
         wait.until(EC.presence_of_element_located((By.ID, "identifierId"))).send_keys(email)
         wait.until(EC.element_to_be_clickable((By.ID, "identifierNext"))).click()
 
-        # Step 2: Enter VT username
+        # Step 3: Enter VT username and password
         wait.until(EC.presence_of_element_located((By.ID, "username"))).send_keys(username)
-
-        # Step 3: Enter VT password
         wait.until(EC.presence_of_element_located((By.ID, "password"))).send_keys(password)
         wait.until(EC.element_to_be_clickable((By.XPATH, "//button[@type='submit']"))).click()
 
         # Step 4: Handle Duo 2FA
+        update_progress(3)  # Sending push notification
         print("Waiting for Duo push notification. Approve it on your phone.")
+        duo_prompt_handled = False
+
         for _ in range(24):  # Check every 5 seconds for up to 120 seconds
             time.sleep(5)
             current_url = driver.current_url
 
-            # Check if "Yes, this is my device" prompt appears
-            if "duosecurity.com" in current_url:
+            # Step 4a: Check for "Yes, this is my device" prompt
+            if "duosecurity.com" in current_url and not duo_prompt_handled:
                 try:
                     yes_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//button[contains(text(),'Yes, this is my device')]")))
                     yes_button.click()
+                    duo_prompt_handled = True
                     print("Clicked 'Yes, this is my device'.")
                 except Exception as e:
                     print(f"Error handling 'Yes, this is my device': {e}")
 
-            # Check if login is complete (redirected to Gmail)
+            # Step 4b: Check if login is complete (redirected to Gmail)
             if "mail.google.com" in current_url:
-                print(f"Login successful for {email}!")
+                update_progress(4)  # Success
+                print(f"Login successful for {email}!")  # Output the success message here
                 return True
 
         print(f"Duo push not accepted for {email}.")
@@ -85,7 +100,6 @@ def login_to_google(email, username, password):
     finally:
         driver.quit()
 
-
 def process_user(credential):
     """Decrypt credentials and log in for a single user."""
     decrypted = kms_manager.decrypt(credential.encrypted_key)
@@ -93,6 +107,8 @@ def process_user(credential):
     success = login_to_google(email, username, password)
 
     if success:
+        credential.last_login = datetime.utcnow()
+        db.session.commit()
         print(f"Successfully logged in for user: {email}.")
     else:
         print(f"Failed login attempt for user: {email}.")
@@ -103,10 +119,9 @@ def schedule_users():
         users = EncryptedCredential.query.all()
 
         for user in users:
-            # Calculate the next login time based on created_at
             now = datetime.utcnow()
-            days_since_created = (now - user.created_at).days
-            days_until_next_login = max(0, 25 - days_since_created)
+            days_since_last_login = (now - user.last_login).days if user.last_login else 25
+            days_until_next_login = max(0, 25 - days_since_last_login)
 
             schedule_time = now + timedelta(days=days_until_next_login)
             schedule.every(25).days.do(process_user, user)
@@ -116,16 +131,13 @@ def schedule_users():
     print(f"Scheduled {len(users)} users for periodic logins.")
 
 if __name__ == "__main__":
-    # Process the initial login upon submission
     with app.app_context():
         users = EncryptedCredential.query.all()
         for user in users:
             process_user(user)
 
-    # Schedule periodic logins
     schedule_users()
 
-    # Run the scheduler
     while True:
         schedule.run_pending()
         time.sleep(1)

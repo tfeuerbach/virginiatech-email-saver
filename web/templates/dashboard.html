@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <script>
+        // Function to format the UTC datetime into local timezone
+        function formatDateTime(utcDateTime) {
+            const localDate = new Date(utcDateTime);
+            return localDate.toLocaleString(undefined, {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+            });
+        }
+
+        // Format the displayed timestamps
+        document.addEventListener("DOMContentLoaded", function () {
+            const lastLogin = document.getElementById("last-login");
+            const nextLogin = document.getElementById("next-login");
+
+            if (lastLogin && lastLogin.dataset.time) {
+                lastLogin.textContent = formatDateTime(lastLogin.dataset.time);
+            }
+
+            if (nextLogin && nextLogin.dataset.time) {
+                nextLogin.textContent = formatDateTime(nextLogin.dataset.time);
+            }
+        });
+    </script>
+</head>
+<body>
+    <div class="container">
+        <h1>Dashboard</h1>
+        <p><strong>Email:</strong> {{ vt_email }}</p>
+        <p><strong>Last Login:</strong> <span id="last-login" data-time="{{ last_login }}"></span></p>
+        <p><strong>Next Login:</strong> <span id="next-login" data-time="{{ next_login }}"></span></p>
+    </div>
+</body>
+</html>
