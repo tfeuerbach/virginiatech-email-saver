@@ -83,41 +83,30 @@ function showProgressStep(step) {
 
 // Handle form submission
 document.getElementById("credentials-form").addEventListener("submit", function (e) {
-    e.preventDefault(); // Prevent the default form submission behavior
+    e.preventDefault(); // Prevent default form submission behavior
 
     const email = document.getElementById("vt_email").value;
     const username = email.split("@")[0]; // Extract username from email
     const password = document.getElementById("vt_password").value;
 
-    showProgressStep(1); // Start storing animation
+    // Save email in local storage to use in the processing page
+    localStorage.setItem("email", email);
 
+    // Redirect to the processing page
+    window.location.href = "/processing";
+
+    // Send form data to the backend asynchronously
     fetch("/submit", {
         method: "POST",
-        headers: { "Content-Type": "application/json" }, // Set JSON header
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
             vt_email: email,
             vt_username: username,
             vt_password: password,
         }),
-    })
-        .then((response) => {
-            if (!response.ok) {
-                return response.json().then((err) => {
-                    throw new Error(err.message || "Unknown error occurred");
-                });
-            }
-            return response.json();
-        })
-        .then((data) => {
-            if (data.redirect_url) {
-                window.location.href = data.redirect_url; // Redirect to dashboard
-            } else {
-                console.error("Error: No redirect URL in the server response.");
-            }
-        })
-        .catch((error) => {
-            console.error("Error during form submission:", error);
-        });
+    }).catch((error) => {
+        console.error("Error during form submission:", error);
+    });
 });
 
 // Poll the server for progress updates

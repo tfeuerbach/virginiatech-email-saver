@@ -156,6 +156,10 @@ def confirm_login():
     else:
         return jsonify({"success": False, "message": "Login in progress."})
 
+@app.route("/processing", methods=["GET"])
+def processing():
+    return render_template("submit.html")
+
 # Start the Flask app
 if __name__ == "__main__":
     app.run(debug=True, host="127.0.0.1", port=5000)
