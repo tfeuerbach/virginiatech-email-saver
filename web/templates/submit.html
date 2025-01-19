@@ -3,14 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Virginia Tech Email Saver</title>
+    <title>Processing...</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-    <script type="module" src="{{ url_for('static', filename='js/animations.js') }}"></script>
+    <script src="https://esm.sh/@lottiefiles/dotlottie-web" type="module"></script>
 </head>
 <body>
     <div class="container">
-        <!-- Animation Container -->
-        <div id="animation-container" class="hidden">
+        <div id="animation-container">
             <div id="storing-credentials" class="animation hidden">
                 <h2>Storing your credentials securely...</h2>
                 <canvas id="storing-animation"></canvas>
@@ -28,22 +27,12 @@
                 <canvas id="success-animation"></canvas>
             </div>
         </div>
-
-        <!-- Form Container -->
-        <div id="form-container">
-            <h1>Virginia Tech Email Saver</h1>
-            <form id="credentials-form">
-                <label for="vt_email">VT Email:</label>
-                <input type="email" id="vt_email" name="vt_email" required autocomplete="email">
-                <label for="vt_password">Password:</label>
-                <input type="password" id="vt_password" name="vt_password" required autocomplete="current-password">
-                <button type="submit">Submit</button>
-            </form>
-        </div>
     </div>
 
     <footer>
         <p>&copy; 2025 Virginia Tech Email Saver</p>
     </footer>
+
+    <script type="module" src="{{ url_for('static', filename='js/animations.js') }}"></script>
 </body>
 </html>
