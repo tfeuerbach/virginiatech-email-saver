@@ -102,9 +102,12 @@ button:hover {
 }
 
 footer {
-    margin-top: 2rem;
-    font-size: 0.8rem;
-    color: #ddd;
+    text-align: center;
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    padding: 1rem;
+    color: white;
 }
 
 footer a {

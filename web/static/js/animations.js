@@ -4,7 +4,7 @@
 const animationContainer = document.getElementById("animation-container");
 const formContainer = document.getElementById("form-container");
 
-// Animation steps mapped to their container IDs
+// Animation steps mapped to container IDs
 const animationSteps = {
     1: "storing-credentials",
     2: "attempting-login",
@@ -14,27 +14,20 @@ const animationSteps = {
 
 // Show a specific animation based on step
 function showProgressStep(step) {
-    // Ensure animation container is visible
-    animationContainer.classList.remove("hidden");
+    animationContainer.classList.remove("hidden"); // Ensure the container is visible
 
-    // Hide all animation steps first
+    // Hide all animation steps
     Object.values(animationSteps).forEach((id) => {
         const element = document.getElementById(id);
-        if (element) {
-            element.classList.add("hidden");
-        }
+        if (element) element.classList.add("hidden");
     });
 
-    // Show the current animation step
+    // Show the selected animation step
     const currentAnimation = document.getElementById(animationSteps[step]);
-    if (currentAnimation) {
-        currentAnimation.classList.remove("hidden");
-    }
+    if (currentAnimation) currentAnimation.classList.remove("hidden");
 
-    // If the step is 1, hide the form container
-    if (step === 1) {
-        formContainer.classList.add("hidden");
-    }
+    // Hide the form container when starting animations
+    if (step === 1) formContainer.classList.add("hidden");
 }
 
 // Export for usage in HTML
