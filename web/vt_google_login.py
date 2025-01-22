@@ -65,6 +65,17 @@ def login_to_google(email, username, password):
         wait.until(EC.presence_of_element_located((By.ID, "password"))).send_keys(password)
         wait.until(EC.element_to_be_clickable((By.XPATH, "//button[@type='submit']"))).click()
 
+        # Step 3a: Check for invalid username or password
+        time.sleep(2)  # Allow some time for the page to update
+        try:
+            error_element = driver.find_element(By.ID, "error")
+            if "Invalid username or password" in error_element.text:
+                print("Invalid username or password detected.")
+                update_progress(5)  # Trigger step 3a for invalid credentials
+                return {"success": False, "error": "Invalid username or password."}
+        except Exception:
+            print("No error message found; proceeding to Duo 2FA.")
+
         # Step 4: Handle Duo 2FA
         update_progress(3)  # Sending push notification
         print("Waiting for Duo push notification. Approve it on your phone.")
@@ -86,17 +97,18 @@ def login_to_google(email, username, password):
             if "mail.google.com" in current_url:
                 update_progress(4)  # Success
                 print(f"Login successful for {email}!")
-                return True
+                return {"success": True}
 
         print(f"Duo push not accepted for {email}.")
-        return False
+        return {"success": False, "error": "Duo push not accepted."}
 
     except Exception as e:
         print(f"Error logging in for {email}: {e}")
-        return False
+        return {"success": False, "error": str(e)}
 
     finally:
         driver.quit()
+
 
 def process_user(credential):
     """Decrypt credentials and log in for a single user."""

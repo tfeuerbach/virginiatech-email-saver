@@ -18,7 +18,7 @@
                 <canvas id="login-animation" class="animation hidden"></canvas>
                 <canvas id="push-animation" class="animation hidden"></canvas>
                 <canvas id="success-animation" class="animation hidden"></canvas>
-            </div>            
+            </div>
         </div>
 
         <!-- Status Message -->
@@ -35,6 +35,7 @@
             2: "login-animation",
             3: "push-animation",
             4: "success-animation",
+            5: "success-animation", // Reuse the success animation for step 5 (invalid credentials)
         };
 
         const animationUrls = {
@@ -68,12 +69,13 @@
             initializeAnimation(animationSteps[step], url);
         });
 
-        function updateProgress(step) {
+        function updateProgress(step, message = "") {
             const stepMessages = {
                 1: "Storing your credentials securely...",
                 2: "Attempting to log in...",
                 3: "Sending a push notification to your device...",
                 4: "Login Successful! Redirecting to your dashboard...",
+                5: message || "Invalid username or password. Redirecting to the start...",
             };
         
             // Hide all animations
@@ -95,19 +97,27 @@
             const statusMessage = document.getElementById("status-message");
             statusMessage.textContent = stepMessages[step] || "Processing...";
         
-            // Redirect on step 4
+            // Redirect on step 4 or 5
             if (step === 4) {
                 setTimeout(() => {
                     window.location.href = `/dashboard?email=${encodeURIComponent(email)}`;
                 }, 2000);
+            } else if (step === 5) {
+                setTimeout(() => {
+                    window.location.href = "/";
+                }, 4000);
             }
-        }        
+        }
 
         function pollProgress() {
             fetch("/get_progress")
                 .then((response) => response.json())
                 .then((data) => {
-                    updateProgress(data.step);
+                    if (data.step === 5 && data.error) {
+                        updateProgress(data.step, data.error);
+                    } else {
+                        updateProgress(data.step);
+                    }
                 })
                 .catch((error) => {
                     console.error("Error polling progress:", error);

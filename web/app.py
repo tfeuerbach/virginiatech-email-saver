@@ -50,8 +50,12 @@ def submit():
         print(f"Error parsing JSON: {e}")
         return jsonify({"error": "Invalid JSON payload"}), 400
 
+    # Validate input
     if not (vt_email and vt_username and vt_password):
         return jsonify({"error": "All fields are required"}), 400
+
+    if not vt_email.endswith("@vt.edu"):
+        return jsonify({"error": "Invalid Virginia Tech email address"}), 400
 
     # Combine credentials and encrypt
     plaintext_credentials = f"{vt_email},{vt_username},{vt_password}"
@@ -78,8 +82,10 @@ def submit():
     # Attempt to log in immediately
     try:
         print("Attempting to log in...")
-        login_success = login_to_google(vt_email, vt_username, vt_password)
-        if login_success:
+        login_result = login_to_google(vt_email, vt_username, vt_password)
+
+        if login_result["success"]:
+            # Update the last login timestamp for successful login
             if existing_credential:
                 existing_credential.last_login = datetime.utcnow()
                 db.session.commit()
@@ -91,13 +97,20 @@ def submit():
                 "message": f"{message} Login attempt successful.",
                 "redirect_url": f"/dashboard?email={vt_email}"
             })
+
         else:
-            message += " Login attempt failed. Please check your credentials."
+            # Handle invalid credentials (step 3a)
+            print(f"Login failed: {login_result['error']}")
+            update_progress(5)  # Indicate invalid credentials
+            if existing_credential:
+                # Remove the invalid credentials from the database
+                db.session.delete(existing_credential)
+                db.session.commit()
+            return jsonify({"error": login_result["error"]}), 401
+
     except Exception as e:
         print(f"Error during login: {e}")
-        message += f" Login attempt failed with error: {e}"
-
-    return jsonify({"message": message})
+        return jsonify({"error": "An unexpected error occurred. Please try again later."}), 500
 
 @app.route("/dashboard", methods=["GET"])
 def dashboard():
