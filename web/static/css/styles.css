@@ -36,7 +36,6 @@ body {
     height: 300px; /* Fixed height for consistent animation size */
     margin: 0 auto; /* Center the container horizontally */
     margin-top: 1rem;
-    background: rgba(0, 0, 0, 0.1); /* Optional background for clarity */
     border-radius: 8px;
     overflow: hidden; /* Ensure no overflow */
     display: flex; /* Flexbox for alignment */
@@ -142,4 +141,21 @@ footer a:hover {
 canvas {
     width: 300px;
     height: 300px;
+}
+
+/* Credits Section */
+#credits {
+    margin-top: 1rem;
+    font-size: 0.9rem;
+    color: #fff;
+}
+
+#credits a {
+    color: #ddd;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+#credits a:hover {
+    text-decoration: underline;
 }

@@ -18,6 +18,7 @@
                 <canvas id="login-animation" class="animation hidden"></canvas>
                 <canvas id="push-animation" class="animation hidden"></canvas>
                 <canvas id="success-animation" class="animation hidden"></canvas>
+                <canvas id="error-animation" class="animation hidden"></canvas>
             </div>
         </div>
 
@@ -35,7 +36,7 @@
             2: "login-animation",
             3: "push-animation",
             4: "success-animation",
-            5: "success-animation", // Reuse the success animation for step 5 (invalid credentials)
+            5: "error-animation", // Use the error animation for step 5
         };
 
         const animationUrls = {
@@ -43,6 +44,7 @@
             2: "https://lottie.host/431a01f1-1cdd-4a9c-8a6d-bb87f44cdde0/uSDs8Ocycr.lottie",
             3: "https://lottie.host/8a9d29dc-29d9-4640-902d-279f4e6e7065/5EivasZcWd.lottie",
             4: "https://lottie.host/588ea9d1-e0c7-4fca-91e9-360ea89bcc10/AzcUHnoUuK.lottie",
+            5: "https://lottie.host/9605d1d5-9333-4cfb-b53b-2ab5d8d0283f/poSIsZ8tkW.lottie", // New error animation
         };
 
         const initializedAnimations = {};
@@ -77,14 +79,14 @@
                 4: "Login Successful! Redirecting to your dashboard...",
                 5: message || "Invalid username or password. Redirecting to the start...",
             };
-        
+
             // Hide all animations
             Object.values(animationSteps).forEach((canvasId) => {
                 const canvas = document.getElementById(canvasId);
                 canvas.classList.add("hidden");
                 canvas.classList.remove("visible");
             });
-        
+
             // Show the current animation
             const currentCanvasId = animationSteps[step];
             const currentCanvas = document.getElementById(currentCanvasId);
@@ -92,11 +94,11 @@
                 currentCanvas.classList.add("visible");
                 currentCanvas.classList.remove("hidden");
             }
-        
+
             // Update status message
             const statusMessage = document.getElementById("status-message");
             statusMessage.textContent = stepMessages[step] || "Processing...";
-        
+
             // Redirect on step 4 or 5
             if (step === 4) {
                 setTimeout(() => {

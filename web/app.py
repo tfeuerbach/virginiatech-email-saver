@@ -34,12 +34,14 @@ kms_manager = KMSManager()
 
 @app.route("/", methods=["GET"])
 def index():
+    global progress_updates
+    progress_updates["step"] = 0  # Reset progress step to 0
     return render_template("form.html")
 
 @app.route("/submit", methods=["POST"])
 def submit():
     print("Form submitted!")  # Debug print
-    
+
     # Parse JSON data from the request
     try:
         data = request.get_json()
@@ -57,41 +59,35 @@ def submit():
     if not vt_email.endswith("@vt.edu"):
         return jsonify({"error": "Invalid Virginia Tech email address"}), 400
 
-    # Combine credentials and encrypt
-    plaintext_credentials = f"{vt_email},{vt_username},{vt_password}"
-    encrypted_credentials = kms_manager.encrypt(plaintext_credentials)
-
-    # Check if the email already exists in the database
-    existing_credential = EncryptedCredential.query.filter_by(vt_email=vt_email).first()
-
-    if existing_credential:
-        existing_credential.encrypted_key = encrypted_credentials
-        existing_credential.created_at = datetime.utcnow()
-        db.session.commit()
-        message = "Credentials updated successfully!"
-    else:
-        new_credential = EncryptedCredential(
-            vt_email=vt_email,
-            encrypted_key=encrypted_credentials,
-            created_at=datetime.utcnow(),
-        )
-        db.session.add(new_credential)
-        db.session.commit()
-        message = "Credentials encrypted and saved successfully!"
-
-    # Attempt to log in immediately
     try:
         print("Attempting to log in...")
+        # Attempt to log in immediately
         login_result = login_to_google(vt_email, vt_username, vt_password)
 
         if login_result["success"]:
-            # Update the last login timestamp for successful login
+            # Combine credentials and encrypt only on successful login
+            plaintext_credentials = f"{vt_email},{vt_username},{vt_password}"
+            encrypted_credentials = kms_manager.encrypt(plaintext_credentials)
+
+            # Check if the email already exists in the database
+            existing_credential = EncryptedCredential.query.filter_by(vt_email=vt_email).first()
+
             if existing_credential:
+                existing_credential.encrypted_key = encrypted_credentials
                 existing_credential.last_login = datetime.utcnow()
+                existing_credential.created_at = datetime.utcnow()
                 db.session.commit()
+                message = "Credentials updated successfully!"
             else:
-                new_credential.last_login = datetime.utcnow()
+                new_credential = EncryptedCredential(
+                    vt_email=vt_email,
+                    encrypted_key=encrypted_credentials,
+                    created_at=datetime.utcnow(),
+                    last_login=datetime.utcnow(),
+                )
+                db.session.add(new_credential)
                 db.session.commit()
+                message = "Credentials encrypted and saved successfully!"
 
             return jsonify({
                 "message": f"{message} Login attempt successful.",
@@ -102,10 +98,6 @@ def submit():
             # Handle invalid credentials (step 3a)
             print(f"Login failed: {login_result['error']}")
             update_progress(5)  # Indicate invalid credentials
-            if existing_credential:
-                # Remove the invalid credentials from the database
-                db.session.delete(existing_credential)
-                db.session.commit()
             return jsonify({"error": login_result["error"]}), 401
 
     except Exception as e:
