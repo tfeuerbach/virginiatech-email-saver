@@ -11,8 +11,8 @@
     <script type="module" src="{{ url_for('static', filename='js/animations.js') }}"></script>
 </head>
 <body>
-    <div class="d-flex justify-content-center align-items-center vh-100">
-        <div class="container text-center" style="max-width: 400px;">
+    <div id="main-container">
+        <div class="container text-center">
             <h1>Virginia Tech Email Saver</h1>
             <!-- Form that triggers vt_google_login.py -->
             <form id="credentials-form" method="POST" action="/login">
@@ -34,10 +34,6 @@
             </div>
         </div>
     </div>
-    <footer class="text-center mt-4">
-        <p>&copy; 2025 Virginia Tech Email Saver. Licensed under MIT.</p>
-    </footer>
-
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-pph59dHrYJ+ZKc3F24KO21fFz0rCLzIIm/hn+J6DkDbXnceBTosRk5moKB4lF05E" crossorigin="anonymous"></script>
 </body>
