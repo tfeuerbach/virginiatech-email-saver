@@ -36,5 +36,33 @@
     </div>
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-pph59dHrYJ+ZKc3F24KO21fFz0rCLzIIm/hn+J6DkDbXnceBTosRk5moKB4lF05E" crossorigin="anonymous"></script>
+    <script>
+        // Add custom validation messages
+        document.getElementById('credentials-form').addEventListener('submit', function (e) {
+            const emailInput = document.getElementById('vt_email');
+            const passwordInput = document.getElementById('vt_password');
+
+            // Check if email is empty
+            if (!emailInput.value) {
+                emailInput.setCustomValidity("Please enter your Virginia Tech email address.");
+            } else {
+                emailInput.setCustomValidity(""); // Clear message if valid
+            }
+
+            // Check if password is empty
+            if (!passwordInput.value) {
+                passwordInput.setCustomValidity("Please enter your password.");
+            } else {
+                passwordInput.setCustomValidity(""); // Clear message if valid
+            }
+        });
+
+        // Reset the custom message on input
+        document.querySelectorAll('input').forEach(input => {
+            input.addEventListener('input', function () {
+                this.setCustomValidity("");
+            });
+        });
+    </script>
 </body>
 </html>

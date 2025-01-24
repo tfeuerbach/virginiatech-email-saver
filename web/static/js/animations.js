@@ -18,6 +18,10 @@ const initializedAnimations = {};
 // Helper: Initialize DotLottie animation
 function initializeAnimation(canvasId, src) {
     const canvas = document.getElementById(canvasId);
+    if (!canvas) {
+        console.error(`Canvas with ID ${canvasId} not found.`);
+        return;
+    }
 
     // Set canvas dimensions explicitly
     canvas.width = 300;
@@ -38,6 +42,11 @@ function initializeAnimation(canvasId, src) {
 
 // Show a specific animation based on step
 function showProgressStep(step) {
+    if (!animationContainer) {
+        console.error("Animation container not found.");
+        return;
+    }
+
     animationContainer.classList.remove("hidden");
 
     // Hide all animations
@@ -76,41 +85,46 @@ function showProgressStep(step) {
     }
 
     // Hide the form container at step 1
-    if (step === 1) {
+    if (step === 1 && formContainer) {
         formContainer.classList.add("hidden");
     }
 }
 
 // Handle form submission
-document.getElementById("credentials-form").addEventListener("submit", function (e) {
-    e.preventDefault(); // Prevent default form submission behavior
+const form = document.getElementById("credentials-form");
+if (form) {
+    form.addEventListener("submit", function (e) {
+        e.preventDefault(); // Prevent default form submission behavior
 
-    const email = document.getElementById("vt_email").value;
-    const username = email.split("@")[0]; // Extract username from email
-    const password = document.getElementById("vt_password").value;
+        const email = document.getElementById("vt_email").value;
+        const username = email.split("@")[0]; // Extract username from email
+        const password = document.getElementById("vt_password").value;
 
-    // Save email in local storage to use in the processing page
-    localStorage.setItem("email", email);
+        // Save email in local storage to use in the processing page
+        localStorage.setItem("email", email);
 
-    // Redirect to the processing page
-    window.location.href = "/processing";
+        // Redirect to the processing page
+        window.location.href = "/processing";
 
-    // Send form data to the backend asynchronously
-    fetch("/submit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            vt_email: email,
-            vt_username: username,
-            vt_password: password,
-        }),
-    }).catch((error) => {
-        console.error("Error during form submission:", error);
+        // Send form data to the backend asynchronously
+        fetch("/submit", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                vt_email: email,
+                vt_username: username,
+                vt_password: password,
+            }),
+        }).catch((error) => {
+            console.error("Error during form submission:", error);
+        });
     });
-});
+}
 
 // Poll the server for progress updates
 function pollProgress() {
+    if (!animationContainer) return; // Ensure polling doesn't run without animations
+
     fetch("/get_progress")
         .then((response) => response.json())
         .then((data) => {
@@ -120,8 +134,10 @@ function pollProgress() {
         .catch((error) => console.error("Error polling progress:", error));
 }
 
-// Start polling every second
-setInterval(pollProgress, 1000);
+// Start polling every second if on a page with animations
+if (animationContainer) {
+    setInterval(pollProgress, 1000);
+}
 
 // Export for global usage
 window.showProgressStep = showProgressStep;
