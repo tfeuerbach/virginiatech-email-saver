@@ -27,50 +27,15 @@
     </div>
 
     <script type="module">
-        import { DotLottie } from "https://esm.sh/@lottiefiles/dotlottie-web";
-
+        import { animationSteps, animationUrls } from "./static/js/animationConfig.js";
+        import { initializeAnimation, updateAnimationVisibility } from "./static/js/animationUtils.js";
+    
         const email = localStorage.getItem("email");
-
-        const animationSteps = {
-            1: "storing-animation",
-            2: "login-animation",
-            3: "push-animation",
-            4: "success-animation",
-            5: "error-animation", // Use the error animation for step 5
-        };
-
-        const animationUrls = {
-            1: "https://lottie.host/8ac3bb2a-cbac-4f01-b1ed-8f9f850500f8/pkUIu7XE1d.json",
-            2: "https://lottie.host/431a01f1-1cdd-4a9c-8a6d-bb87f44cdde0/uSDs8Ocycr.lottie",
-            3: "https://lottie.host/8a9d29dc-29d9-4640-902d-279f4e6e7065/5EivasZcWd.lottie",
-            4: "https://lottie.host/588ea9d1-e0c7-4fca-91e9-360ea89bcc10/AzcUHnoUuK.lottie",
-            5: "https://lottie.host/9605d1d5-9333-4cfb-b53b-2ab5d8d0283f/poSIsZ8tkW.lottie", // New error animation
-        };
-
-        const initializedAnimations = {};
-
-        function initializeAnimation(canvasId, src) {
-            const canvas = document.getElementById(canvasId);
-            canvas.width = 300;
-            canvas.height = 300;
-
-            try {
-                initializedAnimations[canvasId] = new DotLottie({
-                    canvas,
-                    src,
-                    loop: true,
-                    autoplay: true,
-                });
-                console.log(`Initialized animation for ${canvasId}`);
-            } catch (error) {
-                console.error(`Failed to initialize animation for ${canvasId}:`, error);
-            }
-        }
-
+    
         Object.entries(animationUrls).forEach(([step, url]) => {
             initializeAnimation(animationSteps[step], url);
         });
-
+    
         function updateProgress(step, message = "") {
             const stepMessages = {
                 1: "Storing your credentials securely...",
@@ -79,27 +44,12 @@
                 4: "Login Successful! Redirecting to your dashboard...",
                 5: message || "Invalid username or password. Redirecting to the start...",
             };
-
-            // Hide all animations
-            Object.values(animationSteps).forEach((canvasId) => {
-                const canvas = document.getElementById(canvasId);
-                canvas.classList.add("hidden");
-                canvas.classList.remove("visible");
-            });
-
-            // Show the current animation
-            const currentCanvasId = animationSteps[step];
-            const currentCanvas = document.getElementById(currentCanvasId);
-            if (currentCanvas) {
-                currentCanvas.classList.add("visible");
-                currentCanvas.classList.remove("hidden");
-            }
-
-            // Update status message
+    
+            updateAnimationVisibility(step, animationSteps);
+    
             const statusMessage = document.getElementById("status-message");
             statusMessage.textContent = stepMessages[step] || "Processing...";
-
-            // Redirect on step 4 or 5
+    
             if (step === 4) {
                 setTimeout(() => {
                     window.location.href = `/dashboard?email=${encodeURIComponent(email)}`;
@@ -110,7 +60,7 @@
                 }, 4000);
             }
         }
-
+    
         function pollProgress() {
             fetch("/get_progress")
                 .then((response) => response.json())
@@ -125,8 +75,8 @@
                     console.error("Error polling progress:", error);
                 });
         }
-
+    
         setInterval(pollProgress, 1000);
-    </script>
+    </script>    
 </body>
 </html>
