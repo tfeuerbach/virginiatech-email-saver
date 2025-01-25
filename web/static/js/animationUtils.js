@@ -1,4 +1,4 @@
-import { DotLottie } from "https://esm.sh/@lottiefiles/dotlottie-web";
+import { DotLottie } from "@lottiefiles/dotlottie-web";
 
 const initializedAnimations = {};
 
@@ -26,7 +26,6 @@ export function initializeAnimation(canvasId, src) {
 }
 
 export function updateAnimationVisibility(step, animationSteps) {
-    // Hide all animations
     Object.values(animationSteps).forEach((id) => {
         const canvas = document.getElementById(id);
         if (canvas) {
@@ -35,7 +34,6 @@ export function updateAnimationVisibility(step, animationSteps) {
         }
     });
 
-    // Show the current animation
     const currentCanvasId = animationSteps[step];
     const currentCanvas = document.getElementById(currentCanvasId);
     if (currentCanvas) {
