@@ -129,7 +129,6 @@ def dashboard():
         next_login=next_login.strftime("%B %d, %Y, %I:%M %p") if next_login else None,
     )
 
-
 @app.route("/update_progress", methods=["POST"])
 def update_progress():
     global progress_updates
