@@ -144,6 +144,7 @@ canvas {
     left: 0;
     width: 100%; /* Full width of the container */
     height: 100%; /* Full height of the container */
+    z-index: 1; /* Ensure animations are on top */
     transition: opacity 0.5s ease-in-out, visibility 0.5s ease-in-out;
     opacity: 0; /* Hidden by default */
     visibility: hidden; /* Hidden by default */
@@ -152,6 +153,7 @@ canvas {
 .animation.visible {
     opacity: 1; /* Show active animation */
     visibility: visible; /* Ensure visibility is set */
+    z-index: 2; /* Bring the active animation to the front */
 }
 
 .animation.hidden {
@@ -164,6 +166,8 @@ canvas {
     text-align: center;
     font-size: 1.2rem;
     margin-top: 1rem;
+    z-index: 10; /* Keep the message above the animations */
+    position: relative;
 }
 
 h1, h2 {

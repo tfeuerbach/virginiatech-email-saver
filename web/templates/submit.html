@@ -8,30 +8,24 @@
 </head>
 <body>
     <div class="container">
-        <!-- Title -->
         <h1>Processing Your Submission...</h1>
-
-        <!-- Animation Section -->
-        <div id="animation-container">
-            <div id="submit-animation-container">
-                <canvas id="storing-animation" class="animation visible"></canvas>
-                <canvas id="login-animation" class="animation hidden"></canvas>
-                <canvas id="push-animation" class="animation hidden"></canvas>
-                <canvas id="success-animation" class="animation hidden"></canvas>
-                <canvas id="error-animation" class="animation hidden"></canvas>
-            </div>
+        <div id="submit-animation-container">
+            <canvas id="storing-animation" class="animation visible"></canvas>
+            <canvas id="login-animation" class="animation hidden"></canvas>
+            <canvas id="push-animation" class="animation hidden"></canvas>
+            <canvas id="success-animation" class="animation hidden"></canvas>
+            <canvas id="error-animation" class="animation hidden"></canvas>
         </div>
-
-        <!-- Status Message -->
         <p id="status-message">Preparing to submit...</p>
     </div>
 
     <script type="module">
-        import { animationSteps, animationUrls } from "./static/js/animationConfig.js";
-        import { initializeAnimation, updateAnimationVisibility } from "./static/js/animationUtils.js";
+        import { animationSteps, animationUrls } from "/static/js/animationConfig.js";
+        import { initializeAnimation, updateAnimationVisibility } from "/static/js/animationUtils.js";
     
         const email = localStorage.getItem("email");
     
+        // Initialize animations
         Object.entries(animationUrls).forEach(([step, url]) => {
             initializeAnimation(animationSteps[step], url);
         });
@@ -44,12 +38,15 @@
                 4: "Login Successful! Redirecting to your dashboard...",
                 5: message || "Invalid username or password. Redirecting to the start...",
             };
-    
+        
+            // Update animation visibility
             updateAnimationVisibility(step, animationSteps);
-    
+        
+            // Update status message
             const statusMessage = document.getElementById("status-message");
             statusMessage.textContent = stepMessages[step] || "Processing...";
-    
+        
+            // Redirect based on the step
             if (step === 4) {
                 setTimeout(() => {
                     window.location.href = `/dashboard?email=${encodeURIComponent(email)}`;
@@ -59,7 +56,14 @@
                     window.location.href = "/";
                 }, 4000);
             }
-        }
+        
+            // Post progress update to the backend
+            fetch("/update_progress", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ step }),
+            }).catch((error) => console.error("Error updating progress:", error));
+        }        
     
         function pollProgress() {
             fetch("/get_progress")

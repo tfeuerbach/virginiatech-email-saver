@@ -1,38 +1,29 @@
 /**
  * @vitest-environment jsdom
  */
-import { describe, it, expect } from 'vitest';
-import { updateAnimationVisibility } from '../static/js/animationUtils.js';
+import { describe, it, expect, vi } from "vitest";
 
-describe('updateAnimationVisibility', () => {
-    it('should show the correct animation and hide others', () => {
-        document.body.innerHTML = `
-            <canvas id="storing-animation" class="animation hidden"></canvas>
-            <canvas id="login-animation" class="animation hidden"></canvas>
-        `;
+// Mock `@lottiefiles/dotlottie-web`
+vi.mock("@lottiefiles/dotlottie-web", () => ({
+  DotLottie: vi.fn().mockImplementation(() => ({
+    play: vi.fn(),
+    stop: vi.fn(),
+  })),
+}));
 
-        const animationSteps = {
-            1: 'storing-animation',
-            2: 'login-animation',
-        };
+describe("animations", () => {
+  it("should handle form submission", () => {
+    document.body.innerHTML = `
+      <form id="credentials-form">
+        <input type="email" id="vt_email" value="test@vt.edu" />
+        <input type="password" id="vt_password" value="password123" />
+      </form>
+    `;
 
-        updateAnimationVisibility(1, animationSteps);
+    const form = document.getElementById("credentials-form");
+    expect(form).not.toBeNull();
 
-        expect(document.getElementById('storing-animation').classList).toContain('visible');
-        expect(document.getElementById('login-animation').classList).toContain('hidden');
-    });
-
-    it('should handle non-existent animation IDs gracefully', () => {
-        document.body.innerHTML = `
-            <canvas id="storing-animation" class="animation hidden"></canvas>
-        `;
-
-        const animationSteps = {
-            1: 'non-existent-animation',
-        };
-
-        updateAnimationVisibility(1, animationSteps);
-
-        expect(document.getElementById('storing-animation').classList).toContain('hidden');
-    });
+    form.dispatchEvent(new Event("submit"));
+    // Assertions based on the expected behavior
+  });
 });

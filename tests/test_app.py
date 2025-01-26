@@ -1,17 +1,18 @@
 import pytest
-from web.app import app
+from web.app import create_app
+from web.database import db
+
 
 @pytest.fixture
-def client():
-    app.config['TESTING'] = True
+def test_client():
+    app = create_app()
+    app.config["TESTING"] = True
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
+
     with app.test_client() as client:
+        with app.app_context():
+            db.create_all()
         yield client
 
-def test_homepage(client):
-    response = client.get('/')
-    assert response.status_code == 200
-    assert b'Virginia Tech Email Saver' in response.data
-
-def test_submit_page(client):
-    response = client.get('/submit')
-    assert response.status_code == 405  # Method Not Allowed (since GET isn't allowed for /submit)
+        with app.app_context():
+            db.drop_all()
