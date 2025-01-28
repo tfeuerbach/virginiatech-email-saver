@@ -1,5 +1,5 @@
 import pytest
-from web.app import create_app
+from web import create_app
 from web.database import db
 from web.models import EncryptedCredential
 
