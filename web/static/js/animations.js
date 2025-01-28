@@ -1,68 +1,41 @@
-// animations.js
+const form = document.getElementById("credentials-form");
+if (form) {
+    form.addEventListener("submit", function (e) {
+        e.preventDefault(); // Prevent default form submission behavior
 
-// Animation elements
-const animations = {
-    storing: document.getElementById('storing-animation'),
-    login: document.getElementById('login-animation'),
-    push: document.getElementById('push-animation'),
-    success: document.getElementById('success-animation'),
-};
+        const email = document.getElementById("vt_email").value;
+        const username = email.split("@")[0]; // Extract username from email
+        const password = document.getElementById("vt_password").value;
 
-// Animation container and form container
-const animationContainer = document.getElementById('animation-container');
-const formContainer = document.getElementById('form-container');
+        // Save email in local storage to use in the processing page
+        localStorage.setItem("email", email);
 
-// Start an animation by key
-function startAnimation(key) {
-    Object.keys(animations).forEach(k => {
-        if (k === key) {
-            animations[k].style.display = 'block'; // Show the current animation
-        } else {
-            animations[k].style.display = 'none'; // Hide others
-        }
+        // Redirect to the processing page
+        window.location.href = "/processing";
+
+        // Send form data to the backend asynchronously
+        fetch("/submit", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                vt_email: email,
+                vt_username: username,
+                vt_password: password,
+            }),
+        })
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error("Failed to submit form");
+                }
+                return response.json();
+            })
+            .then((data) => {
+                if (data.redirect_url) {
+                    window.location.href = data.redirect_url; // Redirect to the dashboard
+                }
+            })
+            .catch((error) => {
+                console.error("Error during form submission:", error);
+            });
     });
 }
-
-// Show progress and manage animations
-function showProgressStep(step) {
-    if (step === 1) {
-        animationContainer.classList.remove('hidden'); // Show the animation container
-        formContainer.classList.add('hidden'); // Hide the form container
-    }
-    switch (step) {
-        case 1:
-            startAnimation('storing');
-            break;
-        case 2:
-            startAnimation('login');
-            break;
-        case 3:
-            startAnimation('push');
-            break;
-        case 4:
-            startAnimation('success');
-            break;
-        default:
-            console.error('Invalid step');
-    }
-}
-
-// Handle form submission
-const form = document.getElementById('credentials-form');
-form.addEventListener('submit', (event) => {
-    event.preventDefault(); // Prevent the default form submission
-    showProgressStep(1); // Start with the storing animation
-
-    // Simulate API call and animation progression
-    setTimeout(() => showProgressStep(2), 2000); // Login animation
-    setTimeout(() => showProgressStep(3), 4000); // Push notification animation
-    setTimeout(() => showProgressStep(4), 6000); // Success animation
-
-    // Redirect or perform additional logic after success
-    setTimeout(() => {
-        window.location.href = '/dashboard'; // Redirect to dashboard
-    }, 8000);
-});
-
-// Export for usage in HTML
-window.showProgressStep = showProgressStep;

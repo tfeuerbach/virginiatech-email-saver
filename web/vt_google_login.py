@@ -60,12 +60,36 @@ def login_to_google(email, username, password):
         wait.until(EC.presence_of_element_located((By.ID, "identifierId"))).send_keys(email)
         wait.until(EC.element_to_be_clickable((By.ID, "identifierNext"))).click()
 
-        # Step 3: Enter VT username and password
+        # Step 3: Check for any error message
+        time.sleep(2)  # Allow time for the page to update
+        try:
+            error_element = driver.find_element(By.XPATH, "//*[contains(@class, 'error') or contains(@jsname, 'B34EJ')]")
+            if error_element.is_displayed():
+                error_text = error_element.text
+                print(f"Error detected on accounts.google.com: {error_text}")
+                update_progress(5)  # Trigger error progress step
+                return {"success": False, "error": error_text}
+        except Exception:
+            print("No error message found on accounts.google.com; proceeding.")
+
+        # Step 4: Enter VT username and password
         wait.until(EC.presence_of_element_located((By.ID, "username"))).send_keys(username)
         wait.until(EC.presence_of_element_located((By.ID, "password"))).send_keys(password)
         wait.until(EC.element_to_be_clickable((By.XPATH, "//button[@type='submit']"))).click()
 
-        # Step 4: Handle Duo 2FA
+        # Step 5: Check for "Invalid username or password"
+        time.sleep(2)
+        try:
+            error_element = driver.find_element(By.ID, "error")
+            if error_element.is_displayed():
+                error_text = error_element.text
+                print(f"Error detected during VT login: {error_text}")
+                update_progress(5)  # Trigger error progress step
+                return {"success": False, "error": error_text}
+        except Exception:
+            print("No error message found during VT login; proceeding to Duo 2FA.")
+
+        # Step 6: Handle Duo 2FA
         update_progress(3)  # Sending push notification
         print("Waiting for Duo push notification. Approve it on your phone.")
         duo_prompt_handled = False
@@ -74,7 +98,6 @@ def login_to_google(email, username, password):
             time.sleep(5)
             current_url = driver.current_url
 
-            # Step 4a: Check for "Yes, this is my device" prompt
             if "duosecurity.com" in current_url and not duo_prompt_handled:
                 try:
                     yes_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//button[contains(text(),'Yes, this is my device')]")))
@@ -82,20 +105,19 @@ def login_to_google(email, username, password):
                     duo_prompt_handled = True
                     print("Clicked 'Yes, this is my device'.")
                 except Exception as e:
-                    print(f"Error handling 'Yes, this is my device': {e}")
+                    print(f"Error handling Duo prompt: {e}")
 
-            # Step 4b: Check if login is complete (redirected to Gmail)
             if "mail.google.com" in current_url:
                 update_progress(4)  # Success
-                print(f"Login successful for {email}!")  # Output the success message here
-                return True
+                print(f"Login successful for {email}!")
+                return {"success": True}
 
         print(f"Duo push not accepted for {email}.")
-        return False
+        return {"success": False, "error": "Duo push not accepted."}
 
     except Exception as e:
         print(f"Error logging in for {email}: {e}")
-        return False
+        return {"success": False, "error": str(e)}
 
     finally:
         driver.quit()

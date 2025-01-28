@@ -1,0 +1,25 @@
+{
+  "name": "virginiatech-email-saver",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "This project is a Flask-based application designed to help users keep their Virginia Tech Gmail accounts active by automating the monthly login process. It encrypts user credentials securely and automates the login flow to Gmail and the Virginia Tech Single Sign-On (SSO) portal using Selenium.",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "vitest",
+    "test:ui": "vitest --ui"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@lottiefiles/dotlottie-web": "^0.40.0",
+    "canvas": "^3.1.0",
+    "vitest": "^3.0.4"
+  },
+  "dependencies": {
+    "jsdom": "^26.0.0"
+  }
+}

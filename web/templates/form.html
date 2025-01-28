@@ -4,155 +4,74 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Virginia Tech Email Saver</title>
+    <!-- Bootstrap CSS -->
+    <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+    integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM"
+    crossorigin="anonymous"
+    />
+    <!-- Custom Styles -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;700&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.9.1/lottie.min.js"></script>
-    <script src="https://unpkg.com/@lottiefiles/lottie-player@1.5.6/dist/lottie-player.min.js"></script>
+    <script type="module" src="{{ url_for('static', filename='js/animations.js') }}"></script>
 </head>
 <body>
-    <div class="container">
-        <!-- Animation Container -->
-        <div id="animation-container" class="hidden">
-            <div id="storing-credentials" class="animation hidden">
-                <h2>Storing your credentials securely...</h2>
-                <lottie-player
-                    id="storing-animation"
-                    src="/static/animations/storing.json"
-                    background="transparent"
-                    speed="1"
-                    loop
-                    autoplay
-                    style="width: 300px; height: 300px;">
-                </lottie-player>
-            </div>
-            <div id="attempting-login" class="animation hidden">
-                <h2>Attempting to log in...</h2>
-                <lottie-player
-                    id="login-animation"
-                    src="/static/animations/login.json"
-                    background="transparent"
-                    speed="1"
-                    loop
-                    autoplay
-                    style="width: 300px; height: 300px;">
-                </lottie-player>
-            </div>
-            <div id="push-notification" class="animation hidden">
-                <h2>Sending a push notification to your device...</h2>
-                <lottie-player
-                    id="push-animation"
-                    src="/static/animations/push.json"
-                    background="transparent"
-                    speed="1"
-                    loop
-                    autoplay
-                    style="width: 300px; height: 300px;">
-                </lottie-player>
-            </div>
-            <div id="success" class="animation hidden">
-                <h2>Success!</h2>
-                <lottie-player
-                    id="success-animation"
-                    src="/static/animations/success.json"
-                    background="transparent"
-                    speed="1"
-                    loop
-                    autoplay
-                    style="width: 300px; height: 300px;">
-                </lottie-player>
-            </div>
-        </div>
-
-        <!-- Form Container -->
-        <div id="form-container">
+    <div id="main-container">
+        <div class="container text-center">
             <h1>Virginia Tech Email Saver</h1>
-            <form id="credentials-form">
-                <label for="vt_email">VT Email:</label>
-                <input type="email" id="vt_email" name="vt_email" required>
-                <label for="vt_username">VT Username:</label>
-                <input type="text" id="vt_username" name="vt_username" required>
-                <label for="vt_password">Password:</label>
-                <input type="password" id="vt_password" name="vt_password" required>
-                <button type="submit">Submit</button>
-                <p>Developed by Thomas Feuerbach • <a href="https://github.com/tfeuerbach" target="_blank">GitHub</a></p>
-            </form>
+            <!-- Form that triggers vt_google_login.py -->
+            <form id="credentials-form" method="POST" action="/submit">
+                <div class="mb-3">
+                    <label for="vt_email" class="form-label">VT Email:</label>
+                    <input type="email" id="vt_email" name="vt_email" class="form-control mx-auto" style="max-width: 300px;" required autocomplete="email">
+                </div>
+                <div class="mb-3">
+                    <label for="vt_password" class="form-label">Password:</label>
+                    <input type="password" id="vt_password" name="vt_password" class="form-control mx-auto" style="max-width: 300px;" required autocomplete="current-password">
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Submit</button>
+            </form>          
+            <div id="credits" class="mt-3">
+                <small>
+                    Created by <a href="https://github.com/tfeuerbach" target="_blank">Thomas Feuerbach</a> | 
+                    <a href="https://github.com/tfeuerbach/virginiatech-email-saver" target="_blank">View Source on GitHub</a>
+                </small>
+            </div>
         </div>
     </div>
-
-    <footer>
-        <p>&copy; 2025 Virginia Tech Email Saver</p>
-    </footer>
-
-    <script src="{{ url_for('static', filename='js/animations.js') }}"></script>
+    <!-- Bootstrap JS -->
+    <script
+        src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz"
+        crossorigin="anonymous"
+    ></script>
     <script>
-        let redirectTriggered = false; // To ensure redirection happens only once
-        let currentStep = 0; // Track progress steps
-    
-        // Poll progress
-        function pollProgress() {
-            fetch("/get_progress")
-                .then(response => response.json())
-                .then(data => {
-                    const step = data.step;
-                    if (step !== currentStep) {
-                        currentStep = step;
-                        showProgressStep(step); // Update animations
-                    }
-                })
-                .catch(error => console.error("Error polling progress:", error));
-        }
-    
-        // Poll for login status
-        function pollLoginStatus() {
-            fetch("/confirm_login", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email: document.getElementById("vt_email").value })
-            })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success && !redirectTriggered) {
-                        redirectTriggered = true;
-                        setTimeout(() => {
-                            window.location.href = `/dashboard?email=${encodeURIComponent(document.getElementById("vt_email").value)}`;
-                        }, 1500); // Allow animations to complete
-                    }
-                })
-                .catch(error => console.error("Error checking login status:", error));
-        }
-    
-        document.getElementById("credentials-form").addEventListener("submit", function (e) {
-            e.preventDefault();
-            document.getElementById("form-container").classList.add("hidden");
-            document.getElementById("animation-container").classList.remove("hidden");
-    
-            fetch("/submit", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    vt_email: document.getElementById("vt_email").value,
-                    vt_username: document.getElementById("vt_username").value,
-                    vt_password: document.getElementById("vt_password").value
-                })
-            })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.redirect_url && !redirectTriggered) {
-                        redirectTriggered = true;
-                        setTimeout(() => {
-                            window.location.href = data.redirect_url; // Redirect to /dashboard?email
-                        }, 1500); // Delay for animations
-                    } else if (data.error) {
-                        console.error("Error:", data.error);
-                        alert(data.error); // Notify the user
-                        location.reload(); // Reset the form
-                    }
-                })
-                .catch(error => console.error("Error submitting form:", error));
-    
-            setInterval(pollProgress, 1000); // Poll animations
-            setInterval(pollLoginStatus, 1000); // Poll login status
+        // Add custom validation messages
+        document.getElementById('credentials-form').addEventListener('submit', function (e) {
+            const emailInput = document.getElementById('vt_email');
+            const passwordInput = document.getElementById('vt_password');
+
+            // Check if email is empty
+            if (!emailInput.value) {
+                emailInput.setCustomValidity("Please enter your Virginia Tech email address.");
+            } else {
+                emailInput.setCustomValidity(""); // Clear message if valid
+            }
+
+            // Check if password is empty
+            if (!passwordInput.value) {
+                passwordInput.setCustomValidity("Please enter your password.");
+            } else {
+                passwordInput.setCustomValidity(""); // Clear message if valid
+            }
         });
-    </script>     
+
+        // Reset the custom message on input
+        document.querySelectorAll('input').forEach(input => {
+            input.addEventListener('input', function () {
+                this.setCustomValidity("");
+            });
+        });
+    </script>
 </body>
 </html>

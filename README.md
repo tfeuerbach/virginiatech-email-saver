@@ -8,6 +8,8 @@ This project is a Flask-based application designed to help users keep their Virg
 - **Automated Login**: Selenium handles logging into Gmail and Virginia Tech's SSO portal, including handling Duo 2FA prompts.
 - **Database Management**: Encrypted credentials are securely stored in an SQLite database.
 - **Web Interface**: Users can submit their credentials via a simple web form.
+- **JavaScript Test Suite**: Added comprehensive testing using Vitest for front-end functionality.
+- **Modular Design**: Clean separation of back-end, front-end, and utility modules for easier development and maintenance.
 
 ## Prerequisites
 
@@ -16,6 +18,8 @@ This project is a Flask-based application designed to help users keep their Virg
 - Selenium WebDriver and Chromium
 - AWS KMS key for credential encryption
 - `chromedriver` installed and configured
+- Node.js (for JavaScript testing)
+- Vitest (installed via `npm install vitest`)
 
 ## Installation
 
@@ -36,7 +40,12 @@ This project is a Flask-based application designed to help users keep their Virg
    pip install -r requirements.txt
    ```
 
-4. Configure AWS KMS:
+4. Install Node.js dependencies:
+   ```bash
+   npm install
+   ```
+
+5. Configure AWS KMS:
    Add your KMS key ARN and AWS credentials to the `.env` file:
    ```
    AWS_ACCESS_KEY_ID=<your-access-key>
@@ -44,9 +53,9 @@ This project is a Flask-based application designed to help users keep their Virg
    KMS_KEY_ID=arn:aws:kms:<region>:<account-id>:key/<key-id>
    ```
 
-5. Ensure `chromedriver` is installed and available in your PATH.
+6. Ensure `chromedriver` is installed and available in your PATH.
 
-6. Initialize the Flask app:
+7. Initialize the Flask app:
    ```bash
    python -m web.app
    ```
@@ -74,11 +83,28 @@ This project is a Flask-based application designed to help users keep their Virg
    SELECT * FROM encrypted_credential;
    ```
 
+## Testing
+
+### Python Tests
+- Python tests for back-end functionality are located in the `tests/` directory.
+- Run the Python tests:
+   ```bash
+   pytest
+   ```
+
+### JavaScript Tests
+- JavaScript tests for front-end functionality are located in `web/tests/`.
+- Run the JavaScript tests:
+   ```bash
+   npm run test
+   ```
+
 ## Future Enhancements
 
 - Add a periodic task scheduler to automate the login process every 25 days.
 - Integrate user notifications (e.g., email reminders) for login status.
 - Enhance the web interface for better user experience.
+- Include support for additional two-factor authentication methods.
 
 ## Contributing
 

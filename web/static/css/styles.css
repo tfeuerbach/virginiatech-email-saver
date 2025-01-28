@@ -5,11 +5,21 @@ body {
     font-family: 'Rubik', sans-serif;
     background-color: #630031; /* Virginia Tech Chicago Maroon */
     color: #fff;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    overflow: hidden; /* Prevent scrolling during animations */
+    min-height: 100vh; /* Ensure full viewport height */
+    display: flex; /* Enable flexbox */
+    justify-content: center; /* Center horizontally */
+    align-items: center; /* Center vertically */
+    overflow: hidden; /* Prevent scrolling */
+}
+
+#main-container {
+    display: flex; /* Enable flexbox */
+    justify-content: center; /* Center horizontally */
+    align-items: center; /* Center vertically */
+    width: 100%; /* Full-width container */
+    height: 100vh; /* Full height of the viewport */
+    padding: 0; /* Ensure no extra padding shifts layout */
+    margin: 0; /* Reset margins */
 }
 
 .container {
@@ -19,24 +29,145 @@ body {
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
     text-align: center;
     max-width: 400px;
-    width: 100%;
+    width: 100%; /* Responsive width */
+    margin: 0; /* Reset extra margins */
     transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
 }
 
-.hidden {
-    opacity: 0;
-    transform: scale(0.9);
-    pointer-events: none;
+/* Form Styling */
+form {
+    display: flex;
+    flex-direction: column;
+    margin: 0; /* Remove extra form margins */
 }
 
-/* Animations */
-.animation {
-    display: none;
+input[type="email"],
+input[type="text"],
+input[type="password"] {
+    font-family: 'Rubik', sans-serif; /* Match the site's font */
+    font-size: 1rem; /* Adjust font size for readability */
+    padding: 0.8rem;
+    border: none;
+    border-radius: 5px;
+    width: 100%; /* Full width inside the form */
+    max-width: 300px; /* Limit width for responsive layout */
+    margin: .5rem;
+    box-sizing: border-box; /* Include padding in width calculation */
+    text-align: center; /* Center text inside inputs */
+}
+
+button {
+    padding: 0.8rem;
+    font-size: 1rem;
+    font-weight: bold;
+    color: #fff;
+    background-color: #630031;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    width: 100%; /* Full width inside the form */
+    max-width: 300px; /* Limit width for responsive layout */
+    margin: 0 auto; /* Center button horizontally */
+}
+
+button:hover {
+    background-color: #520026;
+}
+
+.form-label {
+    margin-bottom: 0;
+}
+
+/* Footer Placement and Styling */
+footer {
     text-align: center;
+    position: relative; /* Prevent footer from floating */
+    bottom: 0;
+    width: 100%;
+    padding: 1rem;
+    color: white;
+    margin-top: 1rem; /* Add spacing above footer */
+}
+
+footer a {
+    color: #ddd;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+footer a:hover {
+    text-decoration: underline;
+}
+
+/* Credits Section */
+#credits {
+    margin-top: 1rem;
+    font-size: 0.9rem;
+    color: #fff;
+}
+
+#credits a {
+    color: #ddd;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+#credits a:hover {
+    text-decoration: underline;
+}
+
+/* Canvas for Animations */
+canvas {
+    width: 300px;
+    height: 300px;
+}
+
+/* Submission Animation Container */
+#submit-animation-container {
+    position: relative; /* Allow absolute positioning of animations */
+    width: 300px; /* Fixed width for consistent animation size */
+    height: 300px; /* Fixed height for consistent animation size */
+    margin: 1rem auto; /* Add spacing and center horizontally */
+    border-radius: 8px;
+    overflow: hidden; /* Prevent overflow from animations */
+    display: flex; /* Flexbox for alignment */
+    justify-content: center; /* Center content horizontally */
+    align-items: center; /* Center content vertically */
+    box-sizing: border-box; /* Ensure padding doesn't stretch container */
+}
+
+/* Animation Canvas */
+.animation {
+    position: absolute; /* Stack animations on top of each other */
+    top: 0;
+    left: 0;
+    width: 100%; /* Full width of the container */
+    height: 100%; /* Full height of the container */
+    z-index: 1; /* Ensure animations are on top */
+    transition: opacity 0.5s ease-in-out, visibility 0.5s ease-in-out;
+    opacity: 0; /* Hidden by default */
+    visibility: hidden; /* Hidden by default */
 }
 
 .animation.visible {
-    display: block;
+    opacity: 1; /* Show active animation */
+    visibility: visible; /* Ensure visibility is set */
+    z-index: 2; /* Bring the active animation to the front */
+}
+
+.animation.hidden {
+    opacity: 0; /* Hide inactive animations */
+    visibility: hidden; /* Ensure visibility is unset */
+}
+
+/* Status Message */
+#status-message {
+    text-align: center;
+    font-size: 1.2rem;
+    margin-top: 1rem;
+    z-index: 10; /* Keep the message above the animations */
+    position: relative;
 }
 
 h1, h2 {
@@ -53,51 +184,4 @@ h2 {
 p {
     font-size: 1rem;
     margin: 0 0 1.5rem;
-}
-
-form {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-input[type="email"],
-input[type="text"],
-input[type="password"] {
-    padding: 0.8rem;
-    border: none;
-    border-radius: 4px;
-    font-size: 1rem;
-}
-
-button {
-    padding: 0.8rem;
-    font-size: 1rem;
-    font-weight: bold;
-    color: #fff;
-    background-color: #630031;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: background-color 0.3s;
-}
-
-button:hover {
-    background-color: #520026;
-}
-
-footer {
-    margin-top: 2rem;
-    font-size: 0.8rem;
-    color: #ddd;
-}
-
-footer a {
-    color: #ddd;
-    text-decoration: none;
-    font-weight: bold;
-}
-
-footer a:hover {
-    text-decoration: underline;
 }
