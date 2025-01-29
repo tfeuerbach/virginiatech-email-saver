@@ -3,12 +3,17 @@ from flask import render_template, request, jsonify
 from web.models import EncryptedCredential
 from web.database import db
 from kms.kms_manager import KMSManager
+from web.services.google_login import GoogleLogin
+from web.services.login_scheduler import VTLoginScheduler
 
 # Global variable to track progress
 progress_updates = {"step": 0, "error": ""}
 
 # Initialize KMS manager
 kms_manager = KMSManager()
+
+# Initialize scheduler (can be used later for background jobs)
+login_scheduler = VTLoginScheduler()
 
 
 def register_routes(app):
@@ -17,8 +22,8 @@ def register_routes(app):
     @app.route("/", methods=["GET"])
     def index():
         global progress_updates
-        progress_updates["step"] = 0  # Reset progress step to 0
-        progress_updates["error"] = ""  # Clear any previous errors
+        progress_updates["step"] = 0  # Reset progress step
+        progress_updates["error"] = ""  # Clear errors
         return render_template("form.html")
 
     @app.route("/submit", methods=["POST"])
@@ -49,9 +54,9 @@ def register_routes(app):
 
         try:
             print("Attempting to log in...")
-            from web.vt_google_login import login_to_google
+            google_login = GoogleLogin()  # Instantiate GoogleLogin class
             progress_updates["step"] = 2
-            login_result = login_to_google(vt_email, vt_username, vt_password)
+            login_result = google_login.login(vt_email, vt_username, vt_password)
 
             if login_result["success"]:
                 progress_updates["step"] = 4
@@ -135,3 +140,13 @@ def register_routes(app):
     @app.route("/processing", methods=["GET"])
     def processing():
         return render_template("submit.html")
+
+    @app.route("/schedule_logins", methods=["POST"])
+    def schedule_logins():
+        """Endpoint to manually trigger login scheduling"""
+        try:
+            login_scheduler.schedule_users()
+            return jsonify({"message": "Scheduled logins successfully!"})
+        except Exception as e:
+            print(f"Error scheduling logins: {e}")
+            return jsonify({"error": "Failed to schedule logins."}), 500
