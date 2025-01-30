@@ -19,8 +19,8 @@ def create_app():
     # Ensure the instance directory exists
     ensure_instance_dir(instance_path)
 
-    # Create Flask app with instance path
-    app = Flask(__name__, instance_path=instance_path)
+    # Create Flask app with instance path and explicitly set static folder
+    app = Flask(__name__, instance_path=instance_path, static_folder="static")
 
     # Load configuration dynamically based on FLASK_ENV
     app.config.from_object(ActiveConfig)
@@ -33,5 +33,6 @@ def create_app():
     # Register routes
     register_routes(app)
 
-    print(f"🛠️ Running in {ActiveConfig.__name__} mode")  # Debug log
+    print(f"🛠️ Running in {ActiveConfig.__name__} mode (Debug={app.debug})")
+
     return app
