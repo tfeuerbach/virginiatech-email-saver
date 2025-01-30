@@ -1,15 +1,13 @@
 import os
 from flask import Flask
 from web.database import db
-from web.routes import register_routes
-
+from web.routes import register_routes  # Import the function that registers all blueprints
 
 def ensure_instance_dir(instance_path):
     """Ensure the instance directory exists."""
     if not os.path.exists(instance_path):
         os.makedirs(instance_path)
         print(f"Created instance directory at: {instance_path}")
-
 
 def create_app():
     """App factory function."""
@@ -32,7 +30,7 @@ def create_app():
     with app.app_context():
         db.create_all()
 
-    # Register routes
-    register_routes(app)
+    # Register all route blueprints
+    register_routes(app)  # This will register blueprints from `web/routes/__init__.py`
 
     return app
