@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { animationSteps, animationUrls } from '../static/js/animationConfig.js';
+import { animationSteps, animationUrls } from '../../web/static/js/animationConfig.js';
 
 describe('animationConfig', () => {
     it('should map steps to correct canvas IDs', () => {

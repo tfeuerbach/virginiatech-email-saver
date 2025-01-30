@@ -2,7 +2,7 @@ import os
 from flask import Flask
 from web.database import db
 from web.routes import register_routes
-
+from .config import ActiveConfig
 
 def ensure_instance_dir(instance_path):
     """Ensure the instance directory exists."""
@@ -10,22 +10,20 @@ def ensure_instance_dir(instance_path):
         os.makedirs(instance_path)
         print(f"Created instance directory at: {instance_path}")
 
-
 def create_app():
     """App factory function."""
-    # Define the instance path
-    instance_path = os.path.join(os.path.dirname(__file__), "instance")
+    # Define instance path at the root level of the project
+    project_root = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))  # Go up one level
+    instance_path = os.path.join(project_root, "instance")
 
     # Ensure the instance directory exists
     ensure_instance_dir(instance_path)
 
-    # Create the Flask app
-    app = Flask(__name__, instance_path=instance_path)
+    # Create Flask app with instance path and explicitly set static folder
+    app = Flask(__name__, instance_path=instance_path, static_folder="static")
 
-    # Configure the database path inside the instance directory
-    db_path = os.path.join(instance_path, "encrypted_credentials.db")
-    app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"
-    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+    # Load configuration dynamically based on FLASK_ENV
+    app.config.from_object(ActiveConfig)
 
     # Initialize the database
     db.init_app(app)
@@ -34,5 +32,7 @@ def create_app():
 
     # Register routes
     register_routes(app)
+
+    print(f"🛠️ Running in {ActiveConfig.__name__} mode (Debug={app.debug})")
 
     return app
