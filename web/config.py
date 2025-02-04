@@ -1,4 +1,5 @@
 import os
+import secrets
 from dotenv import load_dotenv
 
 # Load environment variables from `.env`
@@ -11,7 +12,9 @@ class Config:
     AWS_REGION = os.getenv("AWS_REGION", "us-east-1")  # Default to us-east-1
     KMS_KEY_ID = os.getenv("KMS_KEY_ID")
 
-    SECRET_KEY = os.getenv("SECRET_KEY", "default-secret-key")  # Add a default
+    # Generate a strong random secret key if not set in .env
+    SECRET_KEY = os.getenv("SECRET_KEY", secrets.token_hex(32))
+
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
 class DevelopmentConfig(Config):

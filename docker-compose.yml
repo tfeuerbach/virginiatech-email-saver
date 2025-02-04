@@ -1,0 +1,31 @@
+version: "3.8"
+
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    depends_on:
+      - db
+    env_file:
+      - .env  # Load environment variables securely
+    environment:
+      - FLASK_ENV=production
+      - FLASK_APP=web
+      - FLASK_RUN_HOST=0.0.0.0
+      - DATABASE_URL=${DATABASE_URL}  # Uses DATABASE_URL from .env
+    volumes:
+      - ./web/static:/app/web/static  # Persist static files
+    restart: always
+
+  db:
+    image: postgres:15
+    container_name: postgres_db
+    restart: always
+    env_file:
+      - .env  # Load DB credentials from .env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

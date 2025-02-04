@@ -6,18 +6,27 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import time
 import requests
+import os
+
+# Set Chrome and ChromeDriver paths inside Docker
+CHROME_BIN = os.getenv("CHROME_BIN", "/usr/bin/google-chrome")
+CHROMEDRIVER_PATH = os.getenv("CHROMEDRIVER_PATH", "/usr/local/bin/chromedriver")
 
 class GoogleLogin:
-    def __init__(self, chrome_driver_path="/usr/local/bin/chromedriver"):
+    def __init__(self):
         """Initialize Selenium WebDriver with Chrome options."""
-        self.service = Service(chrome_driver_path)
+        self.service = Service(CHROMEDRIVER_PATH)
         self.options = Options()
+
+        # Required for running inside Docker
+        self.options.binary_location = CHROME_BIN
+        self.options.add_argument("--headless")  # Headless mode for Docker
         self.options.add_argument("--no-sandbox")
         self.options.add_argument("--disable-dev-shm-usage")
-        # self.options.add_argument("--headless")  # Uncomment to run in headless mode
-        self.options.add_argument("--remote-debugging-port=9222")
+        self.options.add_argument("--disable-gpu")  # Prevent GPU issues inside container
         self.options.add_argument("--window-size=1920,1080")
-        self.options.binary_location = "/snap/bin/chromium"
+        self.options.add_argument("--remote-debugging-port=9222")
+
         self.driver = None
 
     def start_browser(self):

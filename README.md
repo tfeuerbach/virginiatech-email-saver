@@ -1,114 +1,134 @@
 # Virginia Tech Gmail Login Automation
 
-This project is a Flask-based application designed to help users keep their Virginia Tech Gmail accounts active by automating the monthly login process. It encrypts user credentials securely and automates the login flow to Gmail and the Virginia Tech Single Sign-On (SSO) portal using Selenium.
+This project is a Flask-based web application that automates Virginia Tech Gmail logins to keep accounts active. 
+It securely encrypts user credentials and automates the entire login process, including handling Duo 2FA prompts.
 
 ## Features
 
-- **Credential Encryption**: User credentials are encrypted using AWS KMS before being stored in a database.
-- **Automated Login**: Selenium handles logging into Gmail and Virginia Tech's SSO portal, including handling Duo 2FA prompts.
-- **Database Management**: Encrypted credentials are securely stored in an SQLite database.
-- **Web Interface**: Users can submit their credentials via a simple web form.
-- **JavaScript Test Suite**: Added comprehensive testing using Vitest for front-end functionality.
-- **Modular Design**: Clean separation of back-end, front-end, and utility modules for easier development and maintenance.
+- **Secure Credential Storage**: User credentials are encrypted using AWS KMS before being stored in the database.
+- **Automated Monthly Logins**: The app automatically logs into Gmail and Virginia Tech's SSO portal using Selenium.
+- **Handles Duo 2FA**: Automatically detects and handles Duo Security prompts, including "Yes, this is my device."
+- **Web Dashboard**: A simple interface to submit credentials and view the last successful login.
+- **Configurable Environment**: Supports both development and production configurations, allowing seamless deployment.
+- **Testing Suite**: Includes both back-end (Python) and front-end (JavaScript) tests for reliability.
+
+## Development vs. Production Configuration
+
+This app supports both **development** and **production** environments using different configurations.
+
+**Development Mode (Default)**
+- Uses **SQLite** for easy local testing.
+- Flask runs in debug mode with automatic reloading.
+
+**Production Mode**
+- Uses **PostgreSQL** for database storage.
+- Configured for Docker deployment with `docker-compose`.
+- Flask runs with `gunicorn` for better performance.
 
 ## Prerequisites
 
-- Python 3.11 or higher
-- Flask and Flask-SQLAlchemy
-- Selenium WebDriver and Chromium
-- AWS KMS key for credential encryption
-- `chromedriver` installed and configured
+- Python 3.11+
+- Flask, Flask-SQLAlchemy
+- Selenium WebDriver + Google Chrome
+- AWS KMS (for secure credential encryption)
+- `chromedriver` installed and correctly configured
 - Node.js (for JavaScript testing)
-- Vitest (installed via `npm install vitest`)
+- Docker + Docker Compose (for production)
 
 ## Installation
 
-1. Clone the repository:
+1. **Clone the repository**:
    ```bash
    git clone <repository-url>
    cd virginiatech-email-saver
    ```
 
-2. Create a virtual environment:
+2. **Set up a virtual environment**:
    ```bash
    python3 -m venv .envs/vt_login
    source .envs/vt_login/bin/activate
    ```
 
-3. Install dependencies:
+3. **Install dependencies**:
    ```bash
    pip install -r requirements.txt
    ```
 
-4. Install Node.js dependencies:
+4. **Install JavaScript dependencies**:
    ```bash
    npm install
    ```
 
-5. Configure AWS KMS:
-   Add your KMS key ARN and AWS credentials to the `.env` file:
+5. **Configure environment variables**:
+   Copy `.env.example` to `.env` and update:
    ```
    AWS_ACCESS_KEY_ID=<your-access-key>
    AWS_SECRET_ACCESS_KEY=<your-secret-key>
    KMS_KEY_ID=arn:aws:kms:<region>:<account-id>:key/<key-id>
+   FLASK_ENV=development  # Change to production when deploying
+   DATABASE_URL=sqlite:///instance/encrypted_credentials.db
    ```
 
-6. Ensure `chromedriver` is installed and available in your PATH.
-
-7. Initialize the Flask app:
+6. **Ensure `chromedriver` is installed and matches your Chrome version**:
    ```bash
-   python -m web.app
+   chromedriver --version
+   google-chrome --version
+   ```
+
+7. **Start the Flask app (Development Mode)**:
+   ```bash
+   flask --app web run
+   ```
+
+8. **Run in Docker (Production Mode)**:
+   ```bash
+   docker-compose up --build -d
    ```
 
 ## Usage
 
-1. Start the Flask app:
-   ```bash
-   python -m web.app
-   ```
-
-2. Open the app in your browser:
+1. Open the app in your browser:
    ```
    http://127.0.0.1:5000
    ```
 
-3. Submit your Virginia Tech email, username, and password. The app will:
-   - Encrypt your credentials using AWS KMS.
-   - Store them securely in the SQLite database.
-   - Automate the login process using Selenium.
+2. Submit your **Virginia Tech email, username, and password**.
+   - Credentials are **encrypted with AWS KMS**.
+   - The app **automates Gmail login using Selenium**.
+   - **Handles Duo push authentication** automatically.
 
-4. Verify the stored credentials:
+3. View the **last successful login** in the dashboard.
+
+4. To check stored credentials:
    ```bash
-   sqlite3 web/instance/encrypted_credentials.db
+   sqlite3 instance/encrypted_credentials.db
    SELECT * FROM encrypted_credential;
    ```
 
 ## Testing
 
 ### Python Tests
-- Python tests for back-end functionality are located in the `tests/` directory.
-- Run the Python tests:
+- Unit and integration tests for back-end functionality.
    ```bash
    pytest
    ```
 
 ### JavaScript Tests
-- JavaScript tests for front-end functionality are located in `web/tests/`.
-- Run the JavaScript tests:
+- Uses Vitest for front-end testing.
    ```bash
    npm run test
    ```
 
 ## Future Enhancements
 
-- Add a periodic task scheduler to automate the login process every 25 days.
-- Integrate user notifications (e.g., email reminders) for login status.
-- Enhance the web interface for better user experience.
-- Include support for additional two-factor authentication methods.
+- **Automated login scheduling** (every 25 days).
+- **Email notifications** for login status.
+- **Enhanced UI/UX** for a better user experience.
+- **Support for additional 2FA authentication methods**.
 
 ## Contributing
 
-Feel free to fork the repository and submit pull requests. Contributions are welcome
+Contributions are welcome Feel free to fork the repository, submit pull requests, or suggest improvements.
 
 ## License
 
