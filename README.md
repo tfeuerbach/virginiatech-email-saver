@@ -66,7 +66,7 @@ This app supports both **development** and **production** environments using dif
    AWS_SECRET_ACCESS_KEY=<your-secret-key>
    KMS_KEY_ID=arn:aws:kms:<region>:<account-id>:key/<key-id>
    FLASK_ENV=development  # Change to production when deploying
-   DATABASE_URL=sqlite:///instance/encrypted_credentials.db
+   DATABASE_URL=sqlite:///instance/encrypted_credentials.db # Change to DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB} when deploying
    ```
 
 6. **Ensure `chromedriver` is installed and matches your Chrome version**:
