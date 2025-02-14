@@ -3,7 +3,12 @@ import secrets
 from dotenv import load_dotenv
 
 # Load environment variables from `.env`
-load_dotenv()
+basedir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+load_dotenv(os.path.join(basedir, ".env"))
+
+print("FLASK_ENV =", os.getenv("FLASK_ENV"))
+print("DATABASE_URL =", os.getenv("DATABASE_URL"))
+
 
 class Config:
     """Base configuration class. Loads values from environment variables."""

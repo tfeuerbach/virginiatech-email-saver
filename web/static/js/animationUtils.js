@@ -1,9 +1,18 @@
 let DotLottie;
-
 async function loadDotLottie() {
   if (!DotLottie) {
-    const { DotLottie: LoadedDotLottie } = await import("https://esm.sh/@lottiefiles/dotlottie-web");
-    DotLottie = LoadedDotLottie;
+    try {
+      if (typeof window !== "undefined") {
+        // Browser (use CDN import)
+        const { DotLottie: LoadedDotLottie } = await import("https://esm.sh/@lottiefiles/dotlottie-web");
+        DotLottie = LoadedDotLottie;
+      } else {
+        // Cypress (use local module)
+        DotLottie = require("@lottiefiles/dotlottie-web").DotLottie;
+      }
+    } catch (error) {
+      console.error("Error loading DotLottie:", error);
+    }
   }
   return DotLottie;
 }
