@@ -4,5 +4,5 @@ processing_bp = Blueprint("processing", __name__)
 
 @processing_bp.route("/processing", methods=["GET"])
 def processing():
-    """Render the processing page (submit.html)."""
+    """Show the processing/animation page while login runs."""
     return render_template("submit.html")

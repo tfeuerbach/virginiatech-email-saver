@@ -3,7 +3,6 @@ import base64
 import os
 from dotenv import load_dotenv
 
-# Load AWS credentials from .env
 load_dotenv()
 
 class KMSManager:
@@ -17,14 +16,15 @@ class KMSManager:
         self.key_id = os.getenv("KMS_KEY_ID")
 
     def encrypt(self, plaintext):
+        """Encrypt with KMS and return base64-encoded ciphertext."""
         response = self.kms_client.encrypt(
             KeyId=self.key_id,
             Plaintext=plaintext
         )
-        ciphertext = base64.b64encode(response['CiphertextBlob']).decode()
-        return ciphertext
+        return base64.b64encode(response['CiphertextBlob']).decode()
 
     def decrypt(self, ciphertext):
+        """Decode base64, decrypt with KMS, return plaintext string."""
         decoded_blob = base64.b64decode(ciphertext)
         response = self.kms_client.decrypt(
             CiphertextBlob=decoded_blob

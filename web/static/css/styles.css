@@ -79,6 +79,41 @@ button:hover {
     margin-bottom: 0;
 }
 
+/* Password visibility toggle */
+.input-group {
+    margin: .5rem auto;
+}
+
+.input-group .form-control {
+    margin: 0; /* Override standalone input margin inside input-group */
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+#toggle-password {
+    background-color: #fff;
+    border: none;
+    border-left: 1px solid #dee2e6;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    border-top-right-radius: 5px;
+    border-bottom-right-radius: 5px;
+    color: #630031;
+    padding: 0.4rem 0.7rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: auto;
+    max-width: none;
+    font-size: inherit;
+    font-weight: normal;
+}
+
+#toggle-password:hover {
+    background-color: #f0f0f0;
+    color: #630031;
+}
+
 /* Footer Placement and Styling */
 footer {
     text-align: center;
@@ -184,4 +219,110 @@ h2 {
 p {
     font-size: 1rem;
     margin: 0 0 1.5rem;
+}
+
+/* Dashboard-specific: allow scrolling for longer content */
+.dashboard-container {
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+/* Login cadence controls */
+.cadence-description {
+    font-size: 0.9rem;
+    opacity: 0.9;
+    margin-bottom: 1rem;
+}
+
+.cadence-control {
+    text-align: center;
+}
+
+.cadence-label {
+    font-size: 1.1rem;
+    font-weight: bold;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+#cadence-value {
+    font-size: 1.3rem;
+    min-width: 2ch;
+    display: inline-block;
+}
+
+#cadence-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    max-width: 280px;
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.3);
+    outline: none;
+    margin: 0.5rem 0;
+    cursor: pointer;
+}
+
+#cadence-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #fff;
+    border: 3px solid #630031;
+    cursor: pointer;
+    transition: transform 0.15s;
+}
+
+#cadence-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+}
+
+#cadence-slider::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #fff;
+    border: 3px solid #630031;
+    cursor: pointer;
+}
+
+.cadence-range-labels {
+    display: flex;
+    justify-content: space-between;
+    max-width: 280px;
+    margin: 0 auto 0.8rem;
+    font-size: 0.8rem;
+    opacity: 0.7;
+}
+
+.btn-save-cadence {
+    padding: 0.5rem 1.5rem;
+    font-size: 0.9rem;
+    font-weight: bold;
+    color: #fff;
+    background-color: #630031;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s, opacity 0.3s;
+    width: auto;
+    max-width: none;
+}
+
+.btn-save-cadence:hover:not(:disabled) {
+    background-color: #520026;
+}
+
+.btn-save-cadence:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.cadence-status {
+    font-size: 0.85rem;
+    min-height: 1.2em;
+    margin-top: 0.4rem;
 }

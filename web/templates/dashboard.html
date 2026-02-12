@@ -20,27 +20,134 @@
             });
         }
 
-        // Format the displayed timestamps
+        // Format all displayed timestamps
         document.addEventListener("DOMContentLoaded", function () {
-            const lastLogin = document.getElementById("last-login");
-            const nextLogin = document.getElementById("next-login");
-
-            if (lastLogin && lastLogin.dataset.time) {
-                lastLogin.textContent = formatDateTime(lastLogin.dataset.time);
-            }
-
-            if (nextLogin && nextLogin.dataset.time) {
-                nextLogin.textContent = formatDateTime(nextLogin.dataset.time);
-            }
+            const timeSpans = [
+                "last-login",
+                "next-login",
+                "scheduler-next-check",
+                "scheduler-last-check",
+            ];
+            timeSpans.forEach(function (id) {
+                const el = document.getElementById(id);
+                if (el && el.dataset.time) {
+                    el.textContent = formatDateTime(el.dataset.time);
+                }
+            });
         });
     </script>
 </head>
 <body>
-    <div class="container">
+    <div class="container dashboard-container">
         <h1>Dashboard</h1>
         <p><strong>Email:</strong> {{ vt_email }}</p>
         <p><strong>Last Login:</strong> <span id="last-login" data-time="{{ last_login }}"></span></p>
         <p><strong>Next Login:</strong> <span id="next-login" data-time="{{ next_login }}"></span></p>
+
+        <hr style="border-color: rgba(255,255,255,0.3); margin: 1.2rem 0;">
+
+        <h2>Login Cadence</h2>
+        <p class="cadence-description">
+            How often should we automatically log in to keep your account active?
+        </p>
+
+        <div class="cadence-control">
+            <label for="cadence-slider" class="cadence-label">
+                Every <span id="cadence-value">{{ login_cadence_days }}</span> days
+            </label>
+            <input
+                type="range"
+                id="cadence-slider"
+                min="{{ min_cadence }}"
+                max="{{ max_cadence }}"
+                value="{{ login_cadence_days }}"
+                step="1"
+            >
+            <div class="cadence-range-labels">
+                <span>{{ min_cadence }} day</span>
+                <span>{{ max_cadence }} days</span>
+            </div>
+            <button id="save-cadence-btn" class="btn-save-cadence" disabled>Save</button>
+            <p id="cadence-status" class="cadence-status"></p>
+        </div>
+
+        <hr style="border-color: rgba(255,255,255,0.3); margin: 1.2rem 0;">
+        <h2>Scheduler Status</h2>
+        <p>
+            <strong>Auto-login:</strong>
+            {% if scheduler_running %}
+                <span style="color: #90ee90;">Active</span>
+            {% else %}
+                <span style="color: #ff6b6b;">Inactive</span>
+            {% endif %}
+        </p>
+        {% if scheduler_next_check %}
+        <p><strong>Next Check:</strong> <span id="scheduler-next-check" data-time="{{ scheduler_next_check }}"></span></p>
+        {% endif %}
+        {% if scheduler_last_check %}
+        <p><strong>Last Check:</strong> <span id="scheduler-last-check" data-time="{{ scheduler_last_check }}"></span></p>
+        {% endif %}
+        {% if scheduler_last_result %}
+        <p><strong>Last Result:</strong> {{ scheduler_last_result }}</p>
+        {% endif %}
     </div>
+
+    <script>
+        (function () {
+            const slider = document.getElementById('cadence-slider');
+            const valueLabel = document.getElementById('cadence-value');
+            const saveBtn = document.getElementById('save-cadence-btn');
+            const statusEl = document.getElementById('cadence-status');
+            const nextLoginEl = document.getElementById('next-login');
+            const savedValue = {{ login_cadence_days }};
+            const userEmail = "{{ vt_email }}";
+
+            // Update the displayed value as the slider moves
+            slider.addEventListener('input', function () {
+                valueLabel.textContent = this.value;
+                // Enable save button only if the value changed
+                saveBtn.disabled = (parseInt(this.value) === savedValue);
+            });
+
+            // Save the new cadence
+            saveBtn.addEventListener('click', function () {
+                const newCadence = parseInt(slider.value);
+                saveBtn.disabled = true;
+                saveBtn.textContent = 'Saving...';
+                statusEl.textContent = '';
+
+                fetch('/update_cadence', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: userEmail,
+                        login_cadence_days: newCadence,
+                    }),
+                })
+                .then(function (res) { return res.json(); })
+                .then(function (data) {
+                    if (data.error) {
+                        statusEl.textContent = data.error;
+                        statusEl.style.color = '#ff6b6b';
+                        saveBtn.disabled = false;
+                    } else {
+                        statusEl.textContent = data.message;
+                        statusEl.style.color = '#90ee90';
+                        saveBtn.textContent = 'Save';
+                        // Update next login display
+                        if (data.next_login && nextLoginEl) {
+                            nextLoginEl.textContent = formatDateTime(data.next_login);
+                        }
+                    }
+                })
+                .catch(function (err) {
+                    statusEl.textContent = 'Failed to save. Please try again.';
+                    statusEl.style.color = '#ff6b6b';
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = 'Save';
+                });
+            });
+        })();
+    </script>
 </body>
 </html>

@@ -1,60 +1,131 @@
-from datetime import datetime, timedelta
-import schedule
+import threading
 import time
+import logging
+from datetime import datetime, timedelta
+
+import schedule
+
 from kms.kms_manager import KMSManager
 from web.database import db
 from web.models import EncryptedCredential
-from flask import Flask
+from web.services.google_login import GoogleLogin
 
-class VTLoginScheduler:
-    def __init__(self):
-        """Initialize Flask app and database connection."""
-        self.app = Flask(__name__)
-        db_path = "web/instance/encrypted_credentials.db"
-        self.app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"
-        self.app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-        db.init_app(self.app)
-        self.kms_manager = KMSManager()
+logger = logging.getLogger(__name__)
 
-    def process_user(self, credential):
-        """Decrypt credentials and perform Google login."""
-        decrypted = self.kms_manager.decrypt(credential.encrypted_key)
-        email, username, password = decrypted.split(",")
+# Shared dict so the /scheduler_status endpoint can peek at what's going on
+scheduler_status = {
+    "running": False,
+    "last_check": None,
+    "last_check_result": None,
+    "users_checked": 0,
+    "logins_attempted": 0,
+    "logins_succeeded": 0,
+    "next_check": None,
+}
 
-        login_bot = GoogleLogin()
-        success = login_bot.login(email, username, password)
 
-        if success:
-            credential.last_login = datetime.utcnow()
-            db.session.commit()
-            print(f"Successfully logged in for user: {email}.")
-        else:
-            print(f"Failed login attempt for user: {email}.")
+def process_users_due_for_login(app):
+    """Look at every user's cadence and log in anyone who's overdue."""
+    kms_manager = KMSManager()
 
-    def schedule_users(self):
-        """Schedule periodic logins for users."""
-        with self.app.app_context():
-            users = EncryptedCredential.query.all()
+    with app.app_context():
+        now = datetime.utcnow()
+        scheduler_status["last_check"] = now.isoformat()
+        scheduler_status["logins_attempted"] = 0
+        scheduler_status["logins_succeeded"] = 0
 
-            for user in users:
-                now = datetime.utcnow()
-                days_since_last_login = (now - user.last_login).days if user.last_login else 25
-                days_until_next_login = max(0, 25 - days_since_last_login)
+        try:
+            all_users = EncryptedCredential.query.all()
+            scheduler_status["users_checked"] = len(all_users)
 
-                schedule_time = now + timedelta(days=days_until_next_login)
-                schedule.every(25).days.do(self.process_user, user)
+            users_due = [
+                u for u in all_users
+                if u.last_login is None
+                or u.last_login <= now - timedelta(days=u.login_cadence_days)
+            ]
 
-                print(f"Scheduled {user.vt_email} for login in {days_until_next_login} days.")
+            logger.info(
+                "Scheduler check: %d total users, %d due for login",
+                len(all_users),
+                len(users_due),
+            )
 
-        print(f"Scheduled {len(users)} users for periodic logins.")
+            if not users_due:
+                scheduler_status["last_check_result"] = "No users due for login"
+                return
 
-    def start_scheduler(self):
-        """Run the scheduler in an infinite loop."""
-        self.schedule_users()
-        while True:
-            schedule.run_pending()
-            time.sleep(1)
+            for user in users_due:
+                scheduler_status["logins_attempted"] += 1
+                try:
+                    decrypted = kms_manager.decrypt(user.encrypted_key)
+                    email, username, password = decrypted.split(",")
 
-if __name__ == "__main__":
-    scheduler = VTLoginScheduler()
-    scheduler.start_scheduler()
+                    logger.info(
+                        "Attempting scheduled login for %s (cadence=%dd)",
+                        email,
+                        user.login_cadence_days,
+                    )
+                    login_bot = GoogleLogin()
+                    result = login_bot.login(email, username, password)
+
+                    if result["success"]:
+                        user.last_login = datetime.utcnow()
+                        db.session.commit()
+                        scheduler_status["logins_succeeded"] += 1
+                        logger.info("Scheduled login succeeded for %s", email)
+                    else:
+                        logger.warning(
+                            "Scheduled login failed for %s: %s",
+                            email,
+                            result.get("error", "Unknown error"),
+                        )
+                except Exception as e:
+                    logger.error("Error processing user %s: %s", user.vt_email, e)
+
+            succeeded = scheduler_status["logins_succeeded"]
+            attempted = scheduler_status["logins_attempted"]
+            scheduler_status["last_check_result"] = (
+                f"{succeeded}/{attempted} logins succeeded"
+            )
+
+        except Exception as e:
+            scheduler_status["last_check_result"] = f"Error: {e}"
+            logger.error("Scheduler check failed: %s", e)
+
+
+def _scheduler_loop(app, interval_hours=24):
+    """Runs forever in a background thread, checking on a fixed interval."""
+    schedule.every(interval_hours).hours.do(process_users_due_for_login, app=app)
+
+    def _update_next():
+        next_run = schedule.next_run()
+        scheduler_status["next_check"] = next_run.isoformat() if next_run else None
+
+    _update_next()
+
+    while True:
+        schedule.run_pending()
+        _update_next()
+        time.sleep(60)
+
+
+def start_scheduler(app, interval_hours=24):
+    """Kick off the scheduler daemon thread. Called once from create_app()."""
+    if scheduler_status["running"]:
+        logger.warning("Scheduler already running, skipping duplicate start")
+        return
+
+    scheduler_status["running"] = True
+    logger.info(
+        "Starting login scheduler (interval=%dh, first run in %dh)",
+        interval_hours,
+        interval_hours,
+    )
+
+    thread = threading.Thread(
+        target=_scheduler_loop,
+        args=(app, interval_hours),
+        daemon=True,
+        name="login-scheduler",
+    )
+    thread.start()

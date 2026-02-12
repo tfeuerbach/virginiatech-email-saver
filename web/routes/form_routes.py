@@ -9,22 +9,22 @@ form_bp = Blueprint("form", __name__)
 kms_manager = KMSManager()
 
 def get_progress_store():
-    """Ensure progress tracking is shared across routes."""
+    """Get the shared progress dict (lives on the app object)."""
     if not hasattr(current_app, "progress_updates"):
         current_app.progress_updates = {"step": 0, "error": ""}
     return current_app.progress_updates
 
 @form_bp.route("/", methods=["GET"])
 def index():
-    """Render the form page."""
+    """Show the login form."""
     progress_updates = get_progress_store()
-    progress_updates["step"] = 0  # Reset progress
-    progress_updates["error"] = ""  # Clear errors
+    progress_updates["step"] = 0
+    progress_updates["error"] = ""
     return render_template("form.html")
 
 @form_bp.route("/submit", methods=["POST"])
 def submit():
-    """Handle form submission and login process."""
+    """Validate creds via Selenium, then encrypt and store them."""
     progress_updates = get_progress_store()
     print("Form submitted!")
 
@@ -54,7 +54,7 @@ def submit():
                 existing_credential.encrypted_key = encrypted_credentials
                 existing_credential.last_login = datetime.utcnow()
                 db.session.commit()
-                message = "Credentials updated successfully!"
+                message = "Credentials updated!"
             else:
                 new_credential = EncryptedCredential(
                     vt_email=vt_email,
@@ -64,7 +64,7 @@ def submit():
                 )
                 db.session.add(new_credential)
                 db.session.commit()
-                message = "Credentials encrypted and saved successfully!"
+                message = "Credentials saved!"
 
             return jsonify({"message": message, "redirect_url": f"/dashboard?email={vt_email}"})
 
@@ -72,9 +72,7 @@ def submit():
             print(f"Login failed: {login_result['error']}")
             progress_updates["step"] = 5
             progress_updates["error"] = login_result["error"]
-            print(f"Updated progress error: {progress_updates['error']}")  # Debugging output
             return jsonify({"error": login_result["error"]}), 401
-
 
     except Exception as e:
         progress_updates["step"] = 5

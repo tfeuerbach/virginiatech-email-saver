@@ -2,5 +2,5 @@ from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
 
-# Alias db.session as db_session for compatibility with tests
+# Alias for test compatibility
 db_session = db.session
