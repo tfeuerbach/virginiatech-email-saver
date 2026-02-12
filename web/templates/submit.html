@@ -16,71 +16,63 @@
             <canvas id="success-animation" class="animation hidden"></canvas>
             <canvas id="error-animation" class="animation hidden"></canvas>
         </div>
-        <p id="status-message">Preparing to submit...</p>
+        <p id="status-message">Storing your credentials securely...</p>
     </div>
 
     <script type="module">
         import { animationSteps, animationUrls } from "/static/js/animationConfig.js";
         import { initializeAnimation, updateAnimationVisibility } from "/static/js/animationUtils.js";
-    
-        const email = localStorage.getItem("email");
-    
-        // Initialize animations
+
+        // Initialize all Lottie animations
         Object.entries(animationUrls).forEach(([step, url]) => {
             initializeAnimation(animationSteps[step], url);
         });
-    
-        function updateProgress(step, message = "") {
-            const stepMessages = {
-                1: "Storing your credentials securely...",
-                2: "Attempting to log in...",
-                3: "Sending a push notification to your device...",
-                4: "Login Successful! Redirecting to your dashboard...",
-                5: message || "Invalid username or password. Redirecting to the start...",
-            };
-        
-            // Update animation visibility
+
+        // Track the last displayed step so we only touch the DOM when it changes
+        let lastStep = 1;
+
+        const stepMessages = {
+            1: "Storing your credentials securely...",
+            2: "Attempting to log in...",
+            3: "Sending a push notification to your device...",
+            4: "Login Successful! Redirecting to your dashboard...",
+            5: "Something went wrong. Redirecting...",
+        };
+
+        function updateProgress(step, errorMsg) {
+            // Only update the DOM when the step actually changes
+            if (step === lastStep) return;
+            lastStep = step;
+
             updateAnimationVisibility(step, animationSteps);
-        
-            // Update status message
+
             const statusMessage = document.getElementById("status-message");
-            statusMessage.textContent = stepMessages[step] || "Processing...";
-        
-            // Redirect based on the step
-            if (step === 4) {
-                setTimeout(() => {
-                    window.location.href = `/dashboard?email=${encodeURIComponent(email)}`;
-                }, 2000);
-            } else if (step === 5) {
-                setTimeout(() => {
-                    window.location.href = "/";
-                }, 4000);
+            if (step === 5 && errorMsg) {
+                statusMessage.textContent = errorMsg;
+            } else {
+                statusMessage.textContent = stepMessages[step] || "Processing...";
             }
-        
-            // Post progress update to the backend
-            fetch("/update_progress", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ step }),
-            }).catch((error) => console.error("Error updating progress:", error));
-        }        
-    
+
+            if (step === 4) {
+                setTimeout(() => { window.location.href = "/dashboard"; }, 2000);
+            } else if (step === 5) {
+                setTimeout(() => { window.location.href = "/"; }, 4000);
+            }
+        }
+
         function pollProgress() {
             fetch("/get_progress")
                 .then((response) => response.json())
                 .then((data) => {
-                    if (data.step === 5 && data.error) {
-                        updateProgress(data.step, data.error);
-                    } else {
-                        updateProgress(data.step);
-                    }
+                    updateProgress(data.step, data.error);
                 })
                 .catch((error) => {
                     console.error("Error polling progress:", error);
                 });
         }
-    
+
+        // Poll every second
         setInterval(pollProgress, 1000);
-    </script>    
+    </script>
 </body>
 </html>

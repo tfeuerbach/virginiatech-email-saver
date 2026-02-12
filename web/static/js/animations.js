@@ -1,19 +1,14 @@
 const form = document.getElementById("credentials-form");
 if (form) {
     form.addEventListener("submit", function (e) {
-        e.preventDefault(); // Prevent default form submission behavior
+        e.preventDefault();
 
         const email = document.getElementById("vt_email").value;
-        const username = email.split("@")[0]; // Extract username from email
+        const username = email.split("@")[0];
         const password = document.getElementById("vt_password").value;
 
-        // Save email in local storage to use in the processing page
-        localStorage.setItem("email", email);
-
-        // Redirect to the processing page
-        window.location.href = "/processing";
-
-        // Send form data to the backend asynchronously
+        // Fire submit and wait for the response so the session cookie
+        // is set before we navigate to the processing page.
         fetch("/submit", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -25,17 +20,16 @@ if (form) {
         })
             .then((response) => {
                 if (!response.ok) {
-                    throw new Error("Failed to submit form");
+                    return response.json().then((data) => {
+                        throw new Error(data.error || "Submission failed");
+                    });
                 }
-                return response.json();
-            })
-            .then((data) => {
-                if (data.redirect_url) {
-                    window.location.href = data.redirect_url; // Redirect to the dashboard
-                }
+                // Session cookie is now set, background login is running.
+                window.location.href = "/processing";
             })
             .catch((error) => {
                 console.error("Error during form submission:", error);
+                alert(error.message || "Something went wrong. Please try again.");
             });
     });
 }

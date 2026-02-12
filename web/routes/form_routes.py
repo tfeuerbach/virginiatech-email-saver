@@ -1,3 +1,4 @@
+import threading
 from flask import Blueprint, render_template, request, jsonify, current_app, session
 from datetime import datetime
 from web.models import EncryptedCredential
@@ -24,60 +25,71 @@ def index():
 
 @form_bp.route("/submit", methods=["POST"])
 def submit():
-    """Validate creds via Selenium, then encrypt and store them."""
+    """Kick off the login flow in a background thread and return immediately.
+
+    Sets the session cookie and step 1 right away so the client can
+    navigate to /processing and start polling progress.
+    """
     progress_updates = get_progress_store()
 
-    try:
-        data = request.get_json()
-        vt_email = data.get("vt_email")
-        vt_username = data.get("vt_username")
-        vt_password = data.get("vt_password")
+    data = request.get_json()
+    vt_email = data.get("vt_email")
+    vt_username = data.get("vt_username")
+    vt_password = data.get("vt_password")
 
-        if not (vt_email and vt_username and vt_password):
-            raise ValueError("All fields are required")
-        if not vt_email.endswith("@vt.edu"):
-            raise ValueError("Invalid Virginia Tech email address")
+    if not (vt_email and vt_username and vt_password):
+        return jsonify({"error": "All fields are required"}), 400
+    if not vt_email.endswith("@vt.edu"):
+        return jsonify({"error": "Invalid Virginia Tech email address"}), 400
 
-        google_login = GoogleLogin()
-        progress_updates["step"] = 2
-        login_result = google_login.login(vt_email, vt_username, vt_password)
+    # Set the session now so the cookie travels with this response
+    session["authenticated_email"] = vt_email
 
-        if login_result["success"]:
-            progress_updates["step"] = 4
-            plaintext_credentials = f"{vt_email},{vt_username},{vt_password}"
-            encrypted_credentials = kms_manager.encrypt(plaintext_credentials)
+    # Mark step 1 immediately
+    progress_updates["step"] = 1
+    progress_updates["error"] = ""
 
-            existing_credential = EncryptedCredential.query.filter_by(vt_email=vt_email).first()
-            if existing_credential:
-                existing_credential.encrypted_key = encrypted_credentials
-                existing_credential.last_login = datetime.utcnow()
-                db.session.commit()
-                message = "Credentials updated!"
-            else:
-                new_credential = EncryptedCredential(
-                    vt_email=vt_email,
-                    encrypted_key=encrypted_credentials,
-                    created_at=datetime.utcnow(),
-                    last_login=datetime.utcnow(),
-                )
-                db.session.add(new_credential)
-                db.session.commit()
-                message = "Credentials saved!"
+    # Run the slow Selenium flow in a background thread
+    app = current_app._get_current_object()
 
-            # Mark this email as authenticated in the session
-            session["authenticated_email"] = vt_email
+    def run_login():
+        with app.app_context():
+            try:
+                google_login = GoogleLogin()
+                progress_updates["step"] = 2
+                login_result = google_login.login(vt_email, vt_username, vt_password)
 
-            return jsonify({"message": message, "redirect_url": "/dashboard"})
+                if login_result["success"]:
+                    progress_updates["step"] = 4
+                    plaintext = f"{vt_email},{vt_username},{vt_password}"
+                    encrypted = kms_manager.encrypt(plaintext)
 
-        else:
-            progress_updates["step"] = 5
-            progress_updates["error"] = login_result["error"]
-            return jsonify({"error": login_result["error"]}), 401
+                    existing = EncryptedCredential.query.filter_by(vt_email=vt_email).first()
+                    if existing:
+                        existing.encrypted_key = encrypted
+                        existing.last_login = datetime.utcnow()
+                        db.session.commit()
+                    else:
+                        new_cred = EncryptedCredential(
+                            vt_email=vt_email,
+                            encrypted_key=encrypted,
+                            created_at=datetime.utcnow(),
+                            last_login=datetime.utcnow(),
+                        )
+                        db.session.add(new_cred)
+                        db.session.commit()
+                else:
+                    progress_updates["step"] = 5
+                    progress_updates["error"] = login_result["error"]
 
-    except Exception as e:
-        progress_updates["step"] = 5
-        progress_updates["error"] = str(e)
-        return jsonify({"error": str(e)}), 400
+            except Exception as e:
+                progress_updates["step"] = 5
+                progress_updates["error"] = str(e)
+
+    thread = threading.Thread(target=run_login, daemon=True)
+    thread.start()
+
+    return jsonify({"message": "Login started"})
 
 @form_bp.route("/logout", methods=["GET"])
 def logout():

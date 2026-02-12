@@ -39,11 +39,11 @@ COPY . .
 
 EXPOSE 5000
 
-# Gunicorn for production, flask dev server for local dev.
-# Preload so the scheduler starts once in the master process.
+# Single worker with threads — keeps in-memory progress tracking simple.
+# Timeout is high because Selenium logins can take a while.
 CMD ["gunicorn", "web:create_app()", \
      "--bind", "0.0.0.0:5000", \
-     "--workers", "2", \
+     "--workers", "1", \
      "--threads", "4", \
      "--timeout", "300", \
      "--preload"]
