@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, jsonify, current_app
+from flask import Blueprint, render_template, request, jsonify, current_app, session
 from datetime import datetime
 from web.models import EncryptedCredential
 from web.database import db
@@ -26,7 +26,6 @@ def index():
 def submit():
     """Validate creds via Selenium, then encrypt and store them."""
     progress_updates = get_progress_store()
-    print("Form submitted!")
 
     try:
         data = request.get_json()
@@ -39,7 +38,6 @@ def submit():
         if not vt_email.endswith("@vt.edu"):
             raise ValueError("Invalid Virginia Tech email address")
 
-        print("Attempting to log in...")
         google_login = GoogleLogin()
         progress_updates["step"] = 2
         login_result = google_login.login(vt_email, vt_username, vt_password)
@@ -66,10 +64,12 @@ def submit():
                 db.session.commit()
                 message = "Credentials saved!"
 
-            return jsonify({"message": message, "redirect_url": f"/dashboard?email={vt_email}"})
+            # Mark this email as authenticated in the session
+            session["authenticated_email"] = vt_email
+
+            return jsonify({"message": message, "redirect_url": "/dashboard"})
 
         else:
-            print(f"Login failed: {login_result['error']}")
             progress_updates["step"] = 5
             progress_updates["error"] = login_result["error"]
             return jsonify({"error": login_result["error"]}), 401
@@ -78,3 +78,9 @@ def submit():
         progress_updates["step"] = 5
         progress_updates["error"] = str(e)
         return jsonify({"error": str(e)}), 400
+
+@form_bp.route("/logout", methods=["GET"])
+def logout():
+    """Clear the session and send them back to the form."""
+    session.clear()
+    return render_template("form.html")

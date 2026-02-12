@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, jsonify, session
 from datetime import datetime, timedelta
 from web.database import db
 from web.models import (
@@ -15,15 +15,21 @@ dashboard_bp = Blueprint("dashboard", __name__)
 kms_manager = KMSManager()
 
 
+def get_authenticated_email():
+    """Return the session email, or None if not logged in."""
+    return session.get("authenticated_email")
+
+
 @dashboard_bp.route("/dashboard", methods=["GET"])
 def dashboard():
-    """Show a user's dashboard (login history, cadence, scheduler info)."""
-    email = request.args.get("email")
+    """Show the authenticated user's dashboard."""
+    email = get_authenticated_email()
     if not email:
         return redirect(url_for("form.index"))
 
     credential = EncryptedCredential.query.filter_by(vt_email=email).first()
     if not credential:
+        session.clear()
         return redirect(url_for("form.index"))
 
     decrypted_credentials = kms_manager.decrypt(credential.encrypted_key)
@@ -35,10 +41,6 @@ def dashboard():
         if credential.last_login
         else None
     )
-
-    # Prevent refresh loops when already on the dashboard
-    if request.referrer and "/dashboard" in request.referrer:
-        return redirect(url_for("form.index"))
 
     return render_template(
         "dashboard.html",
@@ -59,12 +61,15 @@ def dashboard():
 @dashboard_bp.route("/update_cadence", methods=["POST"])
 def update_cadence():
     """Let the user change how often we auto-login for them."""
+    email = get_authenticated_email()
+    if not email:
+        return jsonify({"error": "Not authenticated"}), 401
+
     data = request.get_json()
-    email = data.get("email")
     cadence = data.get("login_cadence_days")
 
-    if not email or cadence is None:
-        return jsonify({"error": "email and login_cadence_days are required"}), 400
+    if cadence is None:
+        return jsonify({"error": "login_cadence_days is required"}), 400
 
     try:
         cadence = int(cadence)

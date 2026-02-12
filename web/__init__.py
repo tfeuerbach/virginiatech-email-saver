@@ -2,6 +2,7 @@ import os
 import time
 import logging
 from flask import Flask
+from sqlalchemy import text
 from web.database import db
 from web.routes import register_routes
 from web.services.login_scheduler import start_scheduler
@@ -17,7 +18,6 @@ def ensure_instance_dir(instance_path):
     """Create the instance dir if it doesn't exist yet."""
     if not os.path.exists(instance_path):
         os.makedirs(instance_path)
-        print(f"Created instance directory at: {instance_path}")
 
 def wait_for_db(app):
     """Block until Postgres is accepting connections."""
@@ -25,11 +25,11 @@ def wait_for_db(app):
         retries = 5
         while retries > 0:
             try:
-                db.session.execute("SELECT 1")
-                print("Database is ready!")
+                db.session.execute(text("SELECT 1"))
+                logging.getLogger(__name__).info("Database is ready!")
                 return
-            except Exception as e:
-                print(f"Waiting for database... ({5 - retries}/5)")
+            except Exception:
+                logging.getLogger(__name__).info("Waiting for database... (%d/5)", 5 - retries)
                 retries -= 1
                 time.sleep(5)
 
@@ -57,10 +57,18 @@ def create_app():
 
     register_routes(app)
 
-    print(f"Running in {ActiveConfig.__name__} mode (Debug={app.debug})")
+    logger = logging.getLogger(__name__)
+    logger.info("Running in %s mode (Debug=%s)", ActiveConfig.__name__, app.debug)
 
-    # Start background login scheduler — only once in the reloader child process
-    if os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug:
+    # Start background login scheduler.
+    # With flask dev server the reloader spawns a child — only start there.
+    # With gunicorn (or anything else) there's no reloader, so always start.
+    is_werkzeug_reloader_parent = (
+        app.debug and os.environ.get("WERKZEUG_RUN_MAIN") is None
+        and "gunicorn" not in (os.environ.get("SERVER_SOFTWARE") or "")
+        and "gunicorn" not in __import__("sys").modules
+    )
+    if not is_werkzeug_reloader_parent:
         start_scheduler(app, interval_hours=24)
 
     return app

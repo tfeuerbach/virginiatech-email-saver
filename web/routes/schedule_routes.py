@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, current_app
+from flask import Blueprint, jsonify, current_app, session
 from web.services.login_scheduler import (
     process_users_due_for_login,
     scheduler_status,
@@ -9,7 +9,10 @@ schedule_bp = Blueprint("schedule", __name__)
 
 @schedule_bp.route("/schedule_logins", methods=["POST"])
 def schedule_logins():
-    """Manually kick off a login check right now."""
+    """Manually kick off a login check — requires an active session."""
+    if not session.get("authenticated_email"):
+        return jsonify({"error": "Not authenticated"}), 401
+
     try:
         process_users_due_for_login(current_app._get_current_object())
         return jsonify({
@@ -23,4 +26,7 @@ def schedule_logins():
 @schedule_bp.route("/scheduler_status", methods=["GET"])
 def get_scheduler_status():
     """Quick peek at whether the scheduler is alive and what it's up to."""
+    if not session.get("authenticated_email"):
+        return jsonify({"error": "Not authenticated"}), 401
+
     return jsonify(scheduler_status)

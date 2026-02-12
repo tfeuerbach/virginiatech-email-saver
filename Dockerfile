@@ -39,7 +39,11 @@ COPY . .
 
 EXPOSE 5000
 
-ENV FLASK_APP=web
-ENV FLASK_RUN_HOST=0.0.0.0
-
-CMD ["flask", "run"]
+# Gunicorn for production, flask dev server for local dev.
+# Preload so the scheduler starts once in the master process.
+CMD ["gunicorn", "web:create_app()", \
+     "--bind", "0.0.0.0:5000", \
+     "--workers", "2", \
+     "--threads", "4", \
+     "--timeout", "300", \
+     "--preload"]

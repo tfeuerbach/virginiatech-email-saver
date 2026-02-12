@@ -39,7 +39,10 @@
 </head>
 <body>
     <div class="container dashboard-container">
-        <h1>Dashboard</h1>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+            <h1 style="margin: 0;">Dashboard</h1>
+            <a href="/logout" class="btn-logout">Log out</a>
+        </div>
         <p><strong>Email:</strong> {{ vt_email }}</p>
         <p><strong>Last Login:</strong> <span id="last-login" data-time="{{ last_login }}"></span></p>
         <p><strong>Next Login:</strong> <span id="next-login" data-time="{{ next_login }}"></span></p>
@@ -100,16 +103,12 @@
             const statusEl = document.getElementById('cadence-status');
             const nextLoginEl = document.getElementById('next-login');
             const savedValue = {{ login_cadence_days }};
-            const userEmail = "{{ vt_email }}";
 
-            // Update the displayed value as the slider moves
             slider.addEventListener('input', function () {
                 valueLabel.textContent = this.value;
-                // Enable save button only if the value changed
                 saveBtn.disabled = (parseInt(this.value) === savedValue);
             });
 
-            // Save the new cadence
             saveBtn.addEventListener('click', function () {
                 const newCadence = parseInt(slider.value);
                 saveBtn.disabled = true;
@@ -119,10 +118,7 @@
                 fetch('/update_cadence', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        email: userEmail,
-                        login_cadence_days: newCadence,
-                    }),
+                    body: JSON.stringify({ login_cadence_days: newCadence }),
                 })
                 .then(function (res) { return res.json(); })
                 .then(function (data) {
