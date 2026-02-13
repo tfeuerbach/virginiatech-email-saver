@@ -6,12 +6,16 @@ if (form) {
         const email = document.getElementById("vt_email").value;
         const username = email.split("@")[0];
         const password = document.getElementById("vt_password").value;
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 
         // Fire submit and wait for the response so the session cookie
         // is set before we navigate to the processing page.
         fetch("/submit", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": csrfToken,
+            },
             body: JSON.stringify({
                 vt_email: email,
                 vt_username: username,

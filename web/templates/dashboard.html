@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <script>
@@ -115,9 +116,13 @@
                 saveBtn.textContent = 'Saving...';
                 statusEl.textContent = '';
 
+                const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
                 fetch('/update_cadence', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken,
+                    },
                     body: JSON.stringify({ login_cadence_days: newCadence }),
                 })
                 .then(function (res) { return res.json(); })

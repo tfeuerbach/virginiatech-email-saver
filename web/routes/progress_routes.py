@@ -1,5 +1,6 @@
 import logging
 from flask import Blueprint, request, jsonify, current_app
+from web.csrf import csrf
 
 logger = logging.getLogger(__name__)
 
@@ -12,8 +13,12 @@ def get_progress_store():
     return current_app.progress_updates
 
 @progress_bp.route("/update_progress", methods=["POST"])
+@csrf.exempt
 def update_progress():
-    """Bump the progress step (only moves forward, never backward)."""
+    """Bump the progress step (only moves forward, never backward).
+
+    Exempt from CSRF — called server-to-server by google_login.py.
+    """
     progress_updates = get_progress_store()
     step = request.json.get("step", 0)
 

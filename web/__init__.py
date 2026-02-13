@@ -3,6 +3,7 @@ import time
 import logging
 from flask import Flask
 from sqlalchemy import text
+from web.csrf import csrf
 from web.database import db
 from web.routes import register_routes
 from web.services.login_scheduler import start_scheduler
@@ -46,6 +47,8 @@ def create_app():
     # Fix relative sqlite paths to be absolute
     if app.config["SQLALCHEMY_DATABASE_URI"].startswith("sqlite:"):
         app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + os.path.join(instance_path, "encrypted_credentials.db")
+
+    csrf.init_app(app)
 
     db.init_app(app)
 
