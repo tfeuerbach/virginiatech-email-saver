@@ -11,28 +11,28 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
 <body>
-    <div class="container">
-        <h1>Processing Your Submission...</h1>
-        <div id="submit-animation-container">
-            <canvas id="storing-animation" class="animation visible"></canvas>
-            <canvas id="login-animation" class="animation hidden"></canvas>
-            <canvas id="push-animation" class="animation hidden"></canvas>
-            <canvas id="success-animation" class="animation hidden"></canvas>
-            <canvas id="error-animation" class="animation hidden"></canvas>
+    <div id="main-container">
+        <div class="card-glass">
+            <h2>Processing Your Submission</h2>
+            <div id="submit-animation-container">
+                <canvas id="storing-animation" class="animation visible"></canvas>
+                <canvas id="login-animation" class="animation hidden"></canvas>
+                <canvas id="push-animation" class="animation hidden"></canvas>
+                <canvas id="success-animation" class="animation hidden"></canvas>
+                <canvas id="error-animation" class="animation hidden"></canvas>
+            </div>
+            <p id="status-message">Storing your credentials securely...</p>
         </div>
-        <p id="status-message">Storing your credentials securely...</p>
     </div>
 
     <script type="module">
         import { animationSteps, animationUrls } from "/static/js/animationConfig.js";
         import { initializeAnimation, updateAnimationVisibility } from "/static/js/animationUtils.js";
 
-        // Initialize all Lottie animations
         Object.entries(animationUrls).forEach(([step, url]) => {
             initializeAnimation(animationSteps[step], url);
         });
 
-        // Track the last displayed step so we only touch the DOM when it changes
         let lastStep = 1;
 
         const stepMessages = {
@@ -44,7 +44,6 @@
         };
 
         function updateProgress(step, errorMsg) {
-            // Only update the DOM when the step actually changes
             if (step === lastStep) return;
             lastStep = step;
 
@@ -75,7 +74,6 @@
                 });
         }
 
-        // Poll every second
         setInterval(pollProgress, 1000);
     </script>
 </body>

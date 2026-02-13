@@ -11,7 +11,6 @@
     <title>Dashboard — VT Email Saver</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <script>
-        // Function to format the UTC datetime into local timezone
         function formatDateTime(utcDateTime) {
             const localDate = new Date(utcDateTime);
             return localDate.toLocaleString(undefined, {
@@ -25,79 +24,77 @@
             });
         }
 
-        // Format all displayed timestamps
         document.addEventListener("DOMContentLoaded", function () {
-            const timeSpans = [
-                "last-login",
-                "next-login",
-                "scheduler-next-check",
-                "scheduler-last-check",
-            ];
-            timeSpans.forEach(function (id) {
-                const el = document.getElementById(id);
-                if (el && el.dataset.time) {
-                    el.textContent = formatDateTime(el.dataset.time);
-                }
-            });
+            ["last-login", "next-login", "scheduler-next-check", "scheduler-last-check"]
+                .forEach(function (id) {
+                    const el = document.getElementById(id);
+                    if (el && el.dataset.time) {
+                        el.textContent = formatDateTime(el.dataset.time);
+                    }
+                });
         });
     </script>
 </head>
 <body>
-    <div class="container dashboard-container">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-            <h1 style="margin: 0;">Dashboard</h1>
-            <a href="/logout" class="btn-logout">Log out</a>
-        </div>
-        <p><strong>Email:</strong> {{ vt_email }}</p>
-        <p><strong>Last Login:</strong> <span id="last-login" data-time="{{ last_login }}"></span></p>
-        <p><strong>Next Login:</strong> <span id="next-login" data-time="{{ next_login }}"></span></p>
-
-        <hr style="border-color: rgba(255,255,255,0.3); margin: 1.2rem 0;">
-
-        <h2>Login Cadence</h2>
-        <p class="cadence-description">
-            How often should we automatically log in to keep your account active?
-        </p>
-
-        <div class="cadence-control">
-            <label for="cadence-slider" class="cadence-label">
-                Every <span id="cadence-value">{{ login_cadence_days }}</span> days
-            </label>
-            <input
-                type="range"
-                id="cadence-slider"
-                min="{{ min_cadence }}"
-                max="{{ max_cadence }}"
-                value="{{ login_cadence_days }}"
-                step="1"
-            >
-            <div class="cadence-range-labels">
-                <span>{{ min_cadence }} day</span>
-                <span>{{ max_cadence }} days</span>
+    <div id="main-container">
+        <div class="card-glass dashboard-container">
+            <div class="dashboard-header">
+                <h1>Dashboard</h1>
+                <a href="/logout" class="btn-logout">Log out</a>
             </div>
-            <button id="save-cadence-btn" class="btn-save-cadence" disabled>Save</button>
-            <p id="cadence-status" class="cadence-status"></p>
-        </div>
 
-        <hr style="border-color: rgba(255,255,255,0.3); margin: 1.2rem 0;">
-        <h2>Scheduler Status</h2>
-        <p>
-            <strong>Auto-login:</strong>
-            {% if scheduler_running %}
-                <span style="color: #90ee90;">Active</span>
-            {% else %}
-                <span style="color: #ff6b6b;">Inactive</span>
+            <p><strong>Email</strong> {{ vt_email }}</p>
+            <p><strong>Last Login</strong> <span id="last-login" data-time="{{ last_login }}"></span></p>
+            <p><strong>Next Login</strong> <span id="next-login" data-time="{{ next_login }}"></span></p>
+
+            <hr class="section-divider">
+
+            <h2>Login Cadence</h2>
+            <p class="cadence-description">
+                How often should we automatically log in to keep your account active?
+            </p>
+
+            <div class="cadence-control">
+                <label for="cadence-slider" class="cadence-label">
+                    Every <span id="cadence-value">{{ login_cadence_days }}</span> days
+                </label>
+                <input
+                    type="range"
+                    id="cadence-slider"
+                    min="{{ min_cadence }}"
+                    max="{{ max_cadence }}"
+                    value="{{ login_cadence_days }}"
+                    step="1"
+                >
+                <div class="cadence-range-labels">
+                    <span>{{ min_cadence }} day</span>
+                    <span>{{ max_cadence }} days</span>
+                </div>
+                <button id="save-cadence-btn" class="btn-save-cadence" disabled>Save</button>
+                <p id="cadence-status" class="cadence-status"></p>
+            </div>
+
+            <hr class="section-divider">
+
+            <h2>Scheduler Status</h2>
+            <p>
+                <strong>Auto-login</strong>
+                {% if scheduler_running %}
+                    <span class="status-pill active">Active</span>
+                {% else %}
+                    <span class="status-pill inactive">Inactive</span>
+                {% endif %}
+            </p>
+            {% if scheduler_next_check %}
+            <p><strong>Next Check</strong> <span id="scheduler-next-check" data-time="{{ scheduler_next_check }}"></span></p>
             {% endif %}
-        </p>
-        {% if scheduler_next_check %}
-        <p><strong>Next Check:</strong> <span id="scheduler-next-check" data-time="{{ scheduler_next_check }}"></span></p>
-        {% endif %}
-        {% if scheduler_last_check %}
-        <p><strong>Last Check:</strong> <span id="scheduler-last-check" data-time="{{ scheduler_last_check }}"></span></p>
-        {% endif %}
-        {% if scheduler_last_result %}
-        <p><strong>Last Result:</strong> {{ scheduler_last_result }}</p>
-        {% endif %}
+            {% if scheduler_last_check %}
+            <p><strong>Last Check</strong> <span id="scheduler-last-check" data-time="{{ scheduler_last_check }}"></span></p>
+            {% endif %}
+            {% if scheduler_last_result %}
+            <p><strong>Last Result</strong> {{ scheduler_last_result }}</p>
+            {% endif %}
+        </div>
     </div>
 
     <script>
@@ -139,7 +136,6 @@
                         statusEl.textContent = data.message;
                         statusEl.style.color = '#90ee90';
                         saveBtn.textContent = 'Save';
-                        // Update next login display
                         if (data.next_login && nextLoginEl) {
                             nextLoginEl.textContent = formatDateTime(data.next_login);
                         }
