@@ -1,12 +1,16 @@
+import logging
+import os
+import time
+
+import requests
 from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-import time
-import requests
-import os
+from selenium.webdriver.support.ui import WebDriverWait
+
+logger = logging.getLogger(__name__)
 
 CHROME_BIN = os.getenv("CHROME_BIN", "/usr/bin/google-chrome")
 CHROMEDRIVER_PATH = os.getenv("CHROMEDRIVER_PATH", "/usr/local/bin/chromedriver")
@@ -35,7 +39,7 @@ class GoogleLogin:
         try:
             requests.post("http://127.0.0.1:5000/update_progress", json={"step": step})
         except Exception as e:
-            print(f"Failed to send progress update: {e}")
+            logger.warning("Failed to send progress update: %s", e)
 
     def login(self, email, username, password):
         """Drive through Google -> VT CAS -> Duo and return success/failure."""
@@ -57,7 +61,7 @@ class GoogleLogin:
                 error_element = self.driver.find_element(By.XPATH, "//*[contains(@class, 'error') or contains(@jsname, 'B34EJ')]")
                 if error_element.is_displayed():
                     error_text = error_element.text
-                    print(f"Error detected on accounts.google.com: {error_text}")
+                    logger.warning("Error detected on accounts.google.com: %s", error_text)
                     return {"success": False, "error": error_text}
             except:
                 pass
@@ -73,14 +77,14 @@ class GoogleLogin:
                 error_element = self.driver.find_element(By.ID, "error")
                 if error_element.is_displayed():
                     error_text = error_element.text
-                    print(f"Login error: {error_text}")
+                    logger.warning("Login error: %s", error_text)
                     return {"success": False, "error": error_text}
             except:
                 pass
 
             # Wait for Duo 2FA
             self.update_progress(3)
-            print("Waiting for Duo push notification...")
+            logger.info("Waiting for Duo push notification...")
 
             duo_prompt_handled = False
 
@@ -94,21 +98,21 @@ class GoogleLogin:
                         yes_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//button[contains(text(),'Yes, this is my device')]")))
                         yes_button.click()
                         duo_prompt_handled = True
-                        print("Clicked 'Yes, this is my device'.")
+                        logger.info("Clicked 'Yes, this is my device'.")
                     except Exception as e:
-                        print(f"Error handling Duo prompt: {e}")
+                        logger.debug("Error handling Duo prompt: %s", e)
 
                 # We're in Gmail — login worked
                 if "mail.google.com" in current_url:
                     self.update_progress(4)
-                    print(f"Login successful for {email}!")
+                    logger.info("Login successful for %s", email)
                     return {"success": True}
 
-            print(f"Duo push not accepted for {email}.")
+            logger.warning("Duo push not accepted for %s", email)
             return {"success": False, "error": "Duo push not accepted."}
 
         except Exception as e:
-            print(f"Error logging in for {email}: {e}")
+            logger.error("Error logging in for %s: %s", email, e)
             return {"success": False, "error": str(e)}
 
         finally:

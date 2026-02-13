@@ -1,4 +1,7 @@
+import logging
 from flask import Blueprint, request, jsonify, current_app
+
+logger = logging.getLogger(__name__)
 
 progress_bp = Blueprint("progress", __name__)
 
@@ -17,12 +20,12 @@ def update_progress():
     if step > progress_updates["step"]:
         progress_updates["step"] = step
 
-    print(f"Progress updated to step: {progress_updates['step']}")
+    logger.debug("Progress updated to step: %s", progress_updates["step"])
     return jsonify({"status": "updated", "current_step": progress_updates["step"]})
 
 @progress_bp.route("/get_progress", methods=["GET"])
 def get_progress():
     """Return current login progress for the polling frontend."""
     progress_updates = get_progress_store()
-    print(f"Current progress: {progress_updates}")
+    logger.debug("Current progress: %s", progress_updates)
     return jsonify(progress_updates)
