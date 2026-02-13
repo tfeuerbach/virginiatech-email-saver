@@ -1,5 +1,5 @@
 import logging
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, current_app, session
 from web.csrf import csrf
 
 logger = logging.getLogger(__name__)
@@ -31,6 +31,9 @@ def update_progress():
 @progress_bp.route("/get_progress", methods=["GET"])
 def get_progress():
     """Return current login progress for the polling frontend."""
+    if not session.get("authenticated_email"):
+        return jsonify({"error": "Not authenticated"}), 401
+
     progress_updates = get_progress_store()
     logger.debug("Current progress: %s", progress_updates)
     return jsonify(progress_updates)
