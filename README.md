@@ -11,6 +11,85 @@
 
 Keep your Virginia Tech Gmail account active with automated logins. This Flask-based web app securely stores your credentials, automates the entire VT SSO + Duo 2FA login flow, and lets you control how often it runs.
 
+## Architecture
+
+```mermaid
+sequenceDiagram
+    actor You
+    participant App as Flask App
+    participant Bot as Headless Chrome
+    participant VT as VT SSO + Duo
+    participant AWS as AWS KMS
+    participant DB as PostgreSQL
+
+    rect rgba(99, 0, 49, 0.08)
+    Note over You,DB: First-time setup
+    You->>App: Submit email + password
+    App->>Bot: Verify credentials via login
+    Bot->>VT: SSO → Google sign-in → Duo
+    VT-->>You: 📱 Approve Duo push on phone
+    Bot-->>App: Login succeeded
+    App->>AWS: Encrypt credentials
+    App->>DB: Store encrypted
+    App-->>You: Redirected to dashboard
+    end
+
+    rect rgba(232, 119, 34, 0.08)
+    Note over You,DB: Every N days (automated)
+    App-->>You: 📧 Reminder email (day before)
+    App->>DB: Query accounts due for login
+    App->>AWS: Decrypt credentials
+    App->>Bot: Drive login flow
+    Bot->>VT: SSO → Google sign-in → Duo
+    VT-->>You: 📱 Approve Duo push on phone
+    end
+```
+
+<details>
+<summary><strong>System architecture (click to expand)</strong></summary>
+
+```mermaid
+graph TB
+    subgraph Internet
+        User["🌐 User"]
+        CF["☁️ Cloudflare Tunnel"]
+    end
+
+    subgraph Server["Home Server · Docker Compose"]
+        Gunicorn["Flask + Gunicorn<br/>Web UI · Dashboard · API"]
+        Scheduler["⏰ Background Scheduler"]
+        Chrome["🖥️ Headless Chrome + Selenium"]
+        DB[("🗄️ PostgreSQL<br/>encrypted credentials")]
+    end
+
+    subgraph AWS["Amazon Web Services"]
+        KMS["🔐 KMS<br/>encryption keys"]
+        SES["📧 SES<br/>email reminders"]
+    end
+
+    subgraph VT["Virginia Tech"]
+        SSO["SSO Portal"]
+        Google["Google Sign-in"]
+        Duo["Duo 2FA"]
+    end
+
+    User <-->|HTTPS| CF
+    CF <-->|HTTP :5000| Gunicorn
+    Gunicorn <-->|read / write| DB
+    Gunicorn <-->|encrypt / decrypt| KMS
+
+    Scheduler -->|query due accounts| DB
+    Scheduler -->|decrypt credentials| KMS
+    Scheduler -->|day-before reminder| SES
+    Scheduler -->|automate login| Chrome
+
+    SES -.->|📧 email| User
+    Chrome --> SSO --> Google --> Duo
+    Duo -.->|📱 push| User
+```
+
+</details>
+
 ## Security
 
 Your credentials are **never stored in plaintext**. Here's what happens when you submit them:
@@ -30,6 +109,7 @@ The source code is fully open — you can audit every line.
 - **AWS KMS Encryption** — Credentials are encrypted with a KMS key before database storage and only decrypted at login time.
 - **Configurable Login Cadence** — Set how often the app logs in on your behalf (1–90 days, defaults to 25) via a dashboard slider.
 - **Background Scheduler** — A daemon thread checks daily for accounts due for a login and runs them automatically.
+- **Login Reminders** — Optional email notification the day before each login so you're ready for the Duo push, plus a downloadable recurring `.ics` calendar event with built-in alarms (works with Apple Calendar, Google Calendar, and Outlook).
 - **Session-Protected Dashboard** — View your last login, next scheduled login, scheduler status, and adjust settings.
 - **CSRF Protection** — All POST endpoints are protected against cross-site request forgery via Flask-WTF.
 - **Modern UI** — Glassmorphism card design, gradient background, Rubik font, Lottie animations for processing feedback, and responsive layout.
@@ -42,6 +122,7 @@ The source code is fully open — you can audit every line.
 | Backend | Flask, Gunicorn, SQLAlchemy |
 | Database | PostgreSQL (production), SQLite (development) |
 | Encryption | AWS KMS via `aws-encryption-sdk` |
+| Notifications | AWS SES (email), iCalendar (.ics) |
 | Browser Automation | Selenium + headless Chrome |
 | Frontend | HTML/CSS/JS, Bootstrap 5, Lottie animations |
 | Infrastructure | Docker Compose, Cloudflare Tunnel |
@@ -63,7 +144,7 @@ The source code is fully open — you can audit every line.
 
 1. **Clone the repository**:
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/tfeuerbach/virginiatech-email-saver.git
    cd virginiatech-email-saver
    ```
 
@@ -101,7 +182,28 @@ The source code is fully open — you can audit every line.
 1. Open `http://localhost:5000` in your browser.
 2. Enter your Virginia Tech email and password. Credentials are encrypted with AWS KMS and stored securely.
 3. The app automates the login flow (SSO, Google sign-in, Duo push) and redirects you to your dashboard.
-4. On the dashboard you can view login history, adjust your login cadence, and monitor the background scheduler.
+4. On the dashboard you can view login history, adjust your login cadence, download a recurring calendar event, and monitor the background scheduler.
+5. When a login is coming up, you'll get an email reminder (if configured) and/or a calendar alert — just approve the Duo push on your phone.
+
+## Email Notifications
+
+Email reminders are optional. If configured, the app emails you the day before each scheduled login so you know to have your phone ready for the Duo push.
+
+Add these to your `.env` (works with any SMTP provider — AWS SES, Gmail app passwords, SendGrid, etc.):
+
+```
+SMTP_HOST=email-smtp.us-east-1.amazonaws.com
+SMTP_PORT=587
+SMTP_USER=your-smtp-username
+SMTP_PASSWORD=your-smtp-password
+SMTP_FROM_EMAIL=noreply@yourdomain.com
+SMTP_FROM_NAME=VT Email Saver
+SMTP_USE_TLS=true
+```
+
+If `SMTP_HOST` is blank or missing, the app still works — it just skips email reminders. The dashboard will show the feature as "Off" until configured.
+
+You can also download a recurring `.ics` calendar event from the dashboard that adds login reminders directly to your calendar app of choice.
 
 ## Testing
 

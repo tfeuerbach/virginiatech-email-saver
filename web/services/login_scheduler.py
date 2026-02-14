@@ -9,6 +9,7 @@ from kms.kms_manager import KMSManager
 from web.database import db
 from web.models import EncryptedCredential
 from web.services.google_login import GoogleLogin
+from web.services import email_notifier
 
 logger = logging.getLogger(__name__)
 
@@ -20,8 +21,54 @@ scheduler_status = {
     "users_checked": 0,
     "logins_attempted": 0,
     "logins_succeeded": 0,
+    "notifications_sent": 0,
     "next_check": None,
 }
+
+
+def send_login_reminders(app):
+    """Email users whose next login is within the next 24-48 hours."""
+    with app.app_context():
+        if not email_notifier.is_configured():
+            logger.debug("SMTP not configured, skipping login reminders")
+            return
+
+        now = datetime.utcnow()
+        all_users = EncryptedCredential.query.all()
+        sent = 0
+
+        for user in all_users:
+            if user.last_login is None:
+                # first-timers haven't had a login yet, nothing to remind about
+                continue
+
+            next_login = user.last_login + timedelta(days=user.login_cadence_days)
+            window_start = next_login - timedelta(days=1)
+
+            # is next login 24-48h from now?
+            if not (window_start <= now < next_login):
+                continue
+
+            # already notified for this upcoming login?
+            if (
+                user.last_notification_sent is not None
+                and user.last_notification_sent >= window_start
+            ):
+                continue
+
+            success = email_notifier.send_login_reminder(
+                to_email=user.vt_email,
+                next_login_utc=next_login,
+                cadence_days=user.login_cadence_days,
+            )
+            if success:
+                user.last_notification_sent = now
+                db.session.commit()
+                sent += 1
+
+        scheduler_status["notifications_sent"] = sent
+        if sent:
+            logger.info("Sent %d login reminder(s)", sent)
 
 
 def process_users_due_for_login(app):
@@ -93,9 +140,15 @@ def process_users_due_for_login(app):
             logger.error("Scheduler check failed: %s", e)
 
 
+def _daily_check(app):
+    """Combined daily task: send reminders first, then do logins."""
+    send_login_reminders(app)
+    process_users_due_for_login(app)
+
+
 def _scheduler_loop(app, interval_hours=24):
     """Runs forever in a background thread, checking on a fixed interval."""
-    schedule.every(interval_hours).hours.do(process_users_due_for_login, app=app)
+    schedule.every(interval_hours).hours.do(_daily_check, app=app)
 
     def _update_next():
         next_run = schedule.next_run()

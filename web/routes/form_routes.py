@@ -1,3 +1,4 @@
+import logging
 import threading
 from flask import Blueprint, render_template, request, jsonify, current_app, session
 from datetime import datetime
@@ -6,8 +7,14 @@ from web.database import db
 from kms.kms_manager import KMSManager
 from web.services.google_login import GoogleLogin
 
+logger = logging.getLogger(__name__)
+
 form_bp = Blueprint("form", __name__)
 kms_manager = KMSManager()
+
+# dev/test account — bypasses Selenium + KMS entirely
+TEST_EMAIL = "test@vt.edu"
+TEST_PASSWORD = "testuser"
 
 def get_progress_store():
     """Get the shared progress dict (lives on the app object)."""
@@ -41,6 +48,29 @@ def submit():
         return jsonify({"error": "All fields are required"}), 400
     if not vt_email.endswith("@vt.edu"):
         return jsonify({"error": "Invalid Virginia Tech email address"}), 400
+
+    # --- dev/test shortcut: skip Selenium + KMS entirely ---
+    if vt_email == TEST_EMAIL and vt_password == TEST_PASSWORD:
+        logger.info("Test user login — bypassing Selenium and KMS")
+        session["authenticated_email"] = vt_email
+
+        existing = EncryptedCredential.query.filter_by(vt_email=vt_email).first()
+        if existing:
+            existing.last_login = datetime.utcnow()
+            db.session.commit()
+        else:
+            db.session.add(EncryptedCredential(
+                vt_email=vt_email,
+                encrypted_key="TEST_ACCOUNT_NO_REAL_CREDENTIALS",
+                created_at=datetime.utcnow(),
+                last_login=datetime.utcnow(),
+            ))
+            db.session.commit()
+
+        # jump straight to "done" so the processing page redirects immediately
+        progress_updates["step"] = 4
+        progress_updates["error"] = ""
+        return jsonify({"message": "Login started"})
 
     # Set the session now so the cookie travels with this response
     session["authenticated_email"] = vt_email

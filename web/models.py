@@ -16,6 +16,8 @@ class EncryptedCredential(db.Model):
     login_cadence_days = db.Column(
         db.Integer, nullable=False, default=DEFAULT_CADENCE_DAYS, server_default="25"
     )
+    # tracks when we last emailed the user a "login coming up" reminder
+    last_notification_sent = db.Column(db.DateTime, nullable=True)
 
     def __repr__(self):
         return f"<EncryptedCredential(vt_email='{self.vt_email}')>"

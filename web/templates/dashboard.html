@@ -76,6 +76,67 @@
 
             <hr class="section-divider">
 
+            <h2>Notifications</h2>
+            <p class="cadence-description">
+                Never miss a Duo push — get reminders before each login.
+            </p>
+
+            <div class="notification-options">
+                <div class="notification-option">
+                    <div class="notification-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                        </svg>
+                    </div>
+                    <div class="notification-detail">
+                        <strong>Calendar Event</strong>
+                        <span>Recurring every {{ login_cadence_days }} days with 1hr &amp; 15min alarms</span>
+                    </div>
+                    <a href="/download_calendar" class="btn-calendar" title="Download .ics file">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                        .ics
+                    </a>
+                </div>
+
+                <div class="notification-option">
+                    <div class="notification-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                            <polyline points="22,6 12,13 2,6"></polyline>
+                        </svg>
+                    </div>
+                    <div class="notification-detail">
+                        <strong>Email Reminder</strong>
+                        <span>
+                            {% if email_notifications_enabled %}
+                                Sent the day before each scheduled login
+                            {% else %}
+                                Not configured — <a href="https://github.com/tfeuerbach/virginiatech-email-saver#email-notifications" target="_blank" style="color: var(--orange);">set up SMTP</a>
+                            {% endif %}
+                        </span>
+                    </div>
+                    {% if email_notifications_enabled %}
+                        <span class="status-pill active" style="flex-shrink: 0;">On</span>
+                    {% else %}
+                        <span class="status-pill inactive" style="flex-shrink: 0;">Off</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <p class="notification-hint">
+                The .ics file works with Apple Calendar, Google Calendar, and Outlook.
+                Re-download if you change your cadence.
+            </p>
+
+            <hr class="section-divider">
+
             <h2>Scheduler Status</h2>
             <p>
                 <strong>Auto-login</strong>

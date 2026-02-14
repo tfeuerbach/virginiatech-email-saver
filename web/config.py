@@ -20,6 +20,15 @@ class Config:
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
 
+    # SMTP for email notifications (optional — leave blank to disable)
+    SMTP_HOST = os.getenv("SMTP_HOST", "")
+    SMTP_PORT = os.getenv("SMTP_PORT", "587")
+    SMTP_USER = os.getenv("SMTP_USER", "")
+    SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+    SMTP_FROM_EMAIL = os.getenv("SMTP_FROM_EMAIL", "noreply@vtemailsaver.tfeuerbach.dev")
+    SMTP_FROM_NAME = os.getenv("SMTP_FROM_NAME", "VT Email Saver")
+    SMTP_USE_TLS = os.getenv("SMTP_USE_TLS", "true")
+
 class DevelopmentConfig(Config):
     """Local dev — SQLite fallback, cookies don't require HTTPS."""
     DEBUG = True
