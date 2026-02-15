@@ -32,6 +32,23 @@ body {
     overflow-x: hidden;
 }
 
+/* override Bootstrap's dark text resets on our dark background */
+#main-container,
+#main-container p,
+#main-container label,
+#main-container span,
+#main-container li,
+.how-it-works,
+.how-it-works p,
+.how-it-works li,
+.site-footer,
+.site-footer a,
+.modal-overlay,
+.modal-overlay p,
+.modal-overlay li {
+    color: var(--text-primary);
+}
+
 /* ===== Page wrapper ===== */
 #main-container {
     display: flex;
@@ -125,18 +142,20 @@ body {
 }
 
 /* ===== Typography ===== */
-h1, h2 {
+h1, h2, h3 {
     margin: 0 0 1rem;
     font-weight: 600;
+    color: var(--text-primary);
 }
 
 h1 { font-size: 1.8rem; }
 
 h2 {
     font-size: 1.25rem;
-    color: var(--text-primary);
     font-weight: 500;
 }
+
+h3 { font-size: 1.1rem; }
 
 p {
     font-size: 0.95rem;
@@ -187,6 +206,11 @@ input.form-control[type="password"] {
     transition: border-color 0.2s, box-shadow 0.2s;
 }
 
+.input-group > input.form-control[type="password"],
+.input-group > input.form-control[type="text"] {
+    width: auto;
+}
+
 input.form-control[type="email"]:focus,
 input.form-control[type="text"]:focus,
 input.form-control[type="password"]:focus {
@@ -201,7 +225,7 @@ input::placeholder {
 }
 
 /* ===== Buttons ===== */
-button {
+button[type="submit"] {
     font-family: 'Rubik', sans-serif;
     padding: 0.75rem 1.5rem;
     font-size: 0.95rem;
@@ -211,18 +235,22 @@ button {
     border: none;
     border-radius: var(--radius-sm);
     cursor: pointer;
-    transition: background 0.2s, transform 0.1s;
+    transition: background 0.2s, transform 0.1s, box-shadow 0.1s;
     width: 100%;
     max-width: 320px;
     margin: 0.5rem auto 0;
+    display: block;
 }
 
-button:hover {
+button[type="submit"]:hover {
     background: var(--orange-hover);
+    box-shadow: 0 4px 16px rgba(232, 119, 34, 0.35);
 }
 
-button:active {
-    transform: scale(0.98);
+button[type="submit"]:active {
+    transform: scale(0.95);
+    box-shadow: 0 1px 4px rgba(232, 119, 34, 0.25);
+    background: #c5651a;
 }
 
 /* ===== Password toggle ===== */
@@ -551,6 +579,7 @@ canvas {
     height: 36px;
     border-radius: 8px;
     background: rgba(232, 119, 34, 0.12);
+    font-size: 1.1rem;
     color: var(--orange);
     display: flex;
     align-items: center;
@@ -995,6 +1024,7 @@ canvas {
     border-radius: 50%;
     background: var(--glass-bg);
     border: 1px solid var(--glass-border);
+    font-size: 1.5rem;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1012,6 +1042,7 @@ canvas {
     font-size: 0.85rem;
     font-weight: 600;
     margin-bottom: 0.2rem;
+    color: var(--text-primary);
 }
 
 .flow-detail {
@@ -1025,6 +1056,7 @@ canvas {
     align-items: center;
     color: var(--text-secondary);
     padding-top: 1rem;
+    font-size: 1.2rem;
 }
 
 /* Info cards */
@@ -1343,4 +1375,41 @@ canvas {
     .modal-body {
         padding: 1rem;
     }
+}
+
+/* ===== Error pages ===== */
+.error-card {
+    text-align: center;
+    padding: 3rem 2rem;
+    max-width: 440px;
+    margin: 0 auto;
+}
+
+.error-card h1 {
+    font-size: 5rem;
+    font-weight: 700;
+    color: var(--orange);
+    margin: 0 0 0.5rem;
+    line-height: 1;
+}
+
+.error-card p {
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+    margin-bottom: 2rem;
+}
+
+.btn-back {
+    display: inline-block;
+    padding: 0.6rem 1.5rem;
+    background: var(--orange);
+    color: #fff;
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+    font-weight: 600;
+    transition: background 0.2s;
+}
+
+.btn-back:hover {
+    background: var(--orange-hover);
 }
