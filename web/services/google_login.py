@@ -14,15 +14,18 @@ logger = logging.getLogger(__name__)
 
 CHROME_BIN = os.getenv("CHROME_BIN", "/usr/bin/google-chrome")
 CHROMEDRIVER_PATH = os.getenv("CHROMEDRIVER_PATH", "/usr/local/bin/chromedriver")
+HEADLESS = os.getenv("SELENIUM_HEADLESS", "true").lower() in ("true", "1", "yes")
+
 
 class GoogleLogin:
     def __init__(self):
-        """Set up headless Chrome for automated login."""
+        """Set up Chrome for automated login (headless by default)."""
         self.service = Service(CHROMEDRIVER_PATH)
         self.options = Options()
 
         self.options.binary_location = CHROME_BIN
-        self.options.add_argument("--headless")
+        if HEADLESS:
+            self.options.add_argument("--headless")
         self.options.add_argument("--no-sandbox")
         self.options.add_argument("--disable-dev-shm-usage")
         self.options.add_argument("--disable-gpu")
@@ -54,14 +57,16 @@ class GoogleLogin:
             # Enter email on Google's page
             wait.until(EC.presence_of_element_located((By.ID, "identifierId"))).send_keys(email)
             wait.until(EC.element_to_be_clickable((By.ID, "identifierNext"))).click()
-            time.sleep(2)
+
+            # Wait for either CAS page or a Google error (no fixed sleep)
+            time.sleep(1)
 
             # Check for Google-side errors
             try:
                 error_element = self.driver.find_element(By.XPATH, "//*[contains(@class, 'error') or contains(@jsname, 'B34EJ')]")
                 if error_element.is_displayed():
                     error_text = error_element.text
-                    logger.warning("Error detected on accounts.google.com: %s", error_text)
+                    logger.warning("Error on accounts.google.com: %s", error_text)
                     return {"success": False, "error": error_text}
             except:
                 pass
@@ -70,7 +75,9 @@ class GoogleLogin:
             wait.until(EC.presence_of_element_located((By.ID, "username"))).send_keys(username)
             wait.until(EC.presence_of_element_located((By.ID, "password"))).send_keys(password)
             wait.until(EC.element_to_be_clickable((By.XPATH, "//button[@type='submit']"))).click()
-            time.sleep(2)
+
+            # Brief pause for CAS to respond before checking for errors
+            time.sleep(1)
 
             # Check for bad password
             try:
@@ -88,19 +95,20 @@ class GoogleLogin:
 
             duo_prompt_handled = False
 
-            for _ in range(24):  # poll every 5s for up to 2 minutes
-                time.sleep(5)
+            for _ in range(60):  # poll every 2s for up to 2 minutes
+                time.sleep(2)
                 current_url = self.driver.current_url
 
                 # Auto-click "Yes, this is my device" if it shows up
                 if "duosecurity.com" in current_url and not duo_prompt_handled:
                     try:
-                        yes_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//button[contains(text(),'Yes, this is my device')]")))
-                        yes_button.click()
-                        duo_prompt_handled = True
-                        logger.info("Clicked 'Yes, this is my device'.")
-                    except Exception as e:
-                        logger.debug("Error handling Duo prompt: %s", e)
+                        yes_button = self.driver.find_element(By.XPATH, "//button[contains(text(),'Yes, this is my device')]")
+                        if yes_button.is_displayed():
+                            yes_button.click()
+                            duo_prompt_handled = True
+                            logger.info("Clicked 'Yes, this is my device'.")
+                    except:
+                        pass
 
                 # We're in Gmail — login worked
                 if "mail.google.com" in current_url:
