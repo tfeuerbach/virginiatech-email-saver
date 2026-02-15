@@ -226,6 +226,10 @@ pytest
 
 Covers unit tests (models, KMS encryption, authentication, CSRF, cadence validation) and integration tests (database operations).
 
+## Planned Improvements
+
+- **Alembic migrations** — Replace the current `_add_column_if_missing` approach with [Alembic](https://alembic.sqlalchemy.org/) for versioned, reversible schema migrations.
+
 ## Contributing
 
 Contributions are welcome. Feel free to fork the repository, submit pull requests, or suggest improvements.
