@@ -16,6 +16,8 @@ class EncryptedCredential(db.Model):
     login_cadence_days = db.Column(
         db.Integer, nullable=False, default=DEFAULT_CADENCE_DAYS, server_default="25"
     )
+    # email reminder opt-in (defaults to on when SMTP is configured)
+    email_opt_in = db.Column(db.Boolean, nullable=False, default=True, server_default="true")
     # optional override — if null, notifications go to vt_email
     notification_email = db.Column(db.String(120), nullable=True)
     # tracks when we last emailed the user a "login coming up" reminder

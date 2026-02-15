@@ -40,6 +40,9 @@ def send_login_reminders(app):
         sent = 0
 
         for user in all_users:
+            if not user.email_opt_in:
+                continue
+
             if user.last_login is None:
                 # first-timers haven't had a login yet, nothing to remind about
                 continue

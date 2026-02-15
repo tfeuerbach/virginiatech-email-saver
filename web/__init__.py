@@ -96,6 +96,7 @@ def create_app():
         db.create_all()
 
         # db.create_all() won't touch existing tables — bolt on new columns here
+        _add_column_if_missing(app, "encrypted_credential", "email_opt_in", "BOOLEAN DEFAULT TRUE")
         _add_column_if_missing(app, "encrypted_credential", "notification_email", "VARCHAR(120)")
         _add_column_if_missing(app, "encrypted_credential", "last_notification_sent", "TIMESTAMP")
         _add_column_if_missing(app, "encrypted_credential", "phone_number", "VARCHAR(20)")

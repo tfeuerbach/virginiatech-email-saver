@@ -123,7 +123,10 @@
                         </span>
                     </div>
                     {% if email_notifications_enabled %}
-                        <span class="status-pill active" style="flex-shrink: 0;">On</span>
+                        <label class="sms-toggle" for="email-opt-in-toggle">
+                            <input type="checkbox" id="email-opt-in-toggle" {% if email_opt_in %}checked{% endif %}>
+                            <span class="sms-toggle-slider"></span>
+                        </label>
                     {% else %}
                         <span class="status-pill inactive" style="flex-shrink: 0;">Off</span>
                     {% endif %}
@@ -174,15 +177,17 @@
                 <p id="sms-status" class="cadence-status"></p>
             </div>
 
-            <div class="notification-email-row">
-                <span class="notification-email-label">Send to</span>
-                <span id="notif-email-display" class="notification-email-value">{{ notification_email }}</span>
-                <input type="email" id="notif-email-input" class="notification-email-input" value="{{ notification_email }}" style="display: none;" placeholder="you@example.com">
-                <button id="notif-email-edit" class="btn-notif-edit" title="Change notification email">change</button>
-                <button id="notif-email-save" class="btn-notif-save" style="display: none;">Save</button>
-                <button id="notif-email-cancel" class="btn-notif-cancel" style="display: none;">Cancel</button>
+            <div id="email-settings-panel" {% if not email_opt_in %}style="display: none;"{% endif %}>
+                <div class="notification-email-row">
+                    <span class="notification-email-label">Send to</span>
+                    <span id="notif-email-display" class="notification-email-value">{{ notification_email }}</span>
+                    <input type="email" id="notif-email-input" class="notification-email-input" value="{{ notification_email }}" style="display: none;" placeholder="you@example.com">
+                    <button id="notif-email-edit" class="btn-notif-edit" title="Change notification email">change</button>
+                    <button id="notif-email-save" class="btn-notif-save" style="display: none;">Save</button>
+                    <button id="notif-email-cancel" class="btn-notif-cancel" style="display: none;">Cancel</button>
+                </div>
+                <p id="notif-email-status" class="cadence-status"></p>
             </div>
-            <p id="notif-email-status" class="cadence-status"></p>
 
             <p class="notification-hint">
                 The .ics file works with Apple Calendar, Google Calendar, and Outlook.
@@ -209,6 +214,37 @@
             {% if scheduler_last_result %}
             <p><strong>Last Result</strong> {{ scheduler_last_result }}</p>
             {% endif %}
+
+            <hr class="section-divider">
+
+            <div class="danger-zone">
+                <h2>Remove Account</h2>
+                <p class="cadence-description">
+                    Remove your account and wipe all stored data. You can always come back
+                    &mdash; just log in again and your account will be re-created.
+                </p>
+
+                <!-- Step 1: swipe to reveal -->
+                <div id="swipe-track" class="swipe-track">
+                    <div id="swipe-thumb" class="swipe-thumb">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
+                    </div>
+                    <span class="swipe-label">Slide to remove</span>
+                    <div id="swipe-fill" class="swipe-fill"></div>
+                </div>
+
+                <!-- Step 2: confirmation (hidden until swipe completes) -->
+                <div id="delete-confirm" class="delete-confirm" style="display: none;">
+                    <p>This will permanently remove your encrypted credentials, phone number,
+                    and notification preferences. All scheduled logins and alerts stop immediately.</p>
+                    <div class="delete-confirm-actions">
+                        <button id="delete-confirm-yes" class="btn-delete-confirm">Yes, remove my account</button>
+                        <button id="delete-confirm-cancel" class="btn-delete-cancel">Never mind</button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -332,6 +368,39 @@
             });
         })();
 
+        // email opt-in toggle
+        (function () {
+            const toggle = document.getElementById('email-opt-in-toggle');
+            if (!toggle) return; // SMTP not configured, toggle doesn't exist
+            const panel = document.getElementById('email-settings-panel');
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+
+            toggle.addEventListener('change', function () {
+                const optIn = toggle.checked;
+                if (panel) panel.style.display = optIn ? '' : 'none';
+
+                fetch('/update_email_opt_in', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken,
+                    },
+                    body: JSON.stringify({ email_opt_in: optIn }),
+                })
+                .then(function (res) { return res.json(); })
+                .then(function (data) {
+                    if (data.error) {
+                        toggle.checked = !optIn;
+                        if (panel) panel.style.display = !optIn ? '' : 'none';
+                    }
+                })
+                .catch(function () {
+                    toggle.checked = !optIn;
+                    if (panel) panel.style.display = !optIn ? '' : 'none';
+                });
+            });
+        })();
+
         // notification email editing
         (function () {
             const display = document.getElementById('notif-email-display');
@@ -435,6 +504,113 @@
                     modal.style.display = 'none';
                     document.body.style.overflow = '';
                 }
+            });
+        })();
+
+        // remove account — swipe to reveal, then confirm
+        (function () {
+            var track = document.getElementById('swipe-track');
+            var thumb = document.getElementById('swipe-thumb');
+            var fill = document.getElementById('swipe-fill');
+            var confirmPanel = document.getElementById('delete-confirm');
+            var confirmYes = document.getElementById('delete-confirm-yes');
+            var confirmCancel = document.getElementById('delete-confirm-cancel');
+            var csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+
+            var dragging = false;
+            var startX = 0;
+            var thumbW = 0;
+            var trackW = 0;
+            var maxX = 0;
+            var completed = false;
+
+            function getX(e) {
+                return e.touches ? e.touches[0].clientX : e.clientX;
+            }
+
+            function begin(e) {
+                if (completed) return;
+                dragging = true;
+                startX = getX(e) - thumb.offsetLeft;
+                thumbW = thumb.offsetWidth;
+                trackW = track.offsetWidth;
+                maxX = trackW - thumbW;
+                thumb.style.transition = 'none';
+                fill.style.transition = 'none';
+                e.preventDefault();
+            }
+
+            function move(e) {
+                if (!dragging) return;
+                var x = Math.min(Math.max(0, getX(e) - startX), maxX);
+                thumb.style.left = x + 'px';
+                fill.style.width = (x + thumbW) + 'px';
+                e.preventDefault();
+            }
+
+            function end() {
+                if (!dragging) return;
+                dragging = false;
+                thumb.style.transition = '';
+                fill.style.transition = '';
+
+                var current = thumb.offsetLeft;
+                if (current >= maxX * 0.85) {
+                    // completed — snap to end
+                    completed = true;
+                    thumb.style.left = maxX + 'px';
+                    fill.style.width = trackW + 'px';
+                    track.classList.add('swipe-complete');
+                    setTimeout(function () {
+                        track.style.display = 'none';
+                        confirmPanel.style.display = '';
+                    }, 300);
+                } else {
+                    // snap back
+                    thumb.style.left = '0px';
+                    fill.style.width = thumbW + 'px';
+                }
+            }
+
+            thumb.addEventListener('mousedown', begin);
+            thumb.addEventListener('touchstart', begin, { passive: false });
+            window.addEventListener('mousemove', move);
+            window.addEventListener('touchmove', move, { passive: false });
+            window.addEventListener('mouseup', end);
+            window.addEventListener('touchend', end);
+
+            // cancel — reset swipe
+            confirmCancel.addEventListener('click', function () {
+                confirmPanel.style.display = 'none';
+                track.style.display = '';
+                track.classList.remove('swipe-complete');
+                completed = false;
+                thumb.style.left = '0px';
+                fill.style.width = thumb.offsetWidth + 'px';
+            });
+
+            // confirm removal
+            confirmYes.addEventListener('click', function () {
+                confirmYes.disabled = true;
+                confirmYes.textContent = 'Removing...';
+
+                fetch('/delete_account', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken,
+                    },
+                })
+                .then(function (res) { return res.json(); })
+                .then(function (data) {
+                    if (data.redirect) {
+                        window.location.href = data.redirect;
+                    }
+                })
+                .catch(function () {
+                    confirmYes.disabled = false;
+                    confirmYes.textContent = 'Yes, remove my account';
+                });
             });
         })();
 

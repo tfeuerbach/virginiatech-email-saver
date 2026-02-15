@@ -67,6 +67,7 @@ def dashboard():
         scheduler_last_check=scheduler_status.get("last_check"),
         scheduler_last_result=scheduler_status.get("last_check_result"),
         email_notifications_enabled=smtp_configured(),
+        email_opt_in=credential.email_opt_in,
         notification_email=credential.effective_notification_email,
         has_custom_notification_email=credential.notification_email is not None,
         sms_opt_in=credential.sms_opt_in,
@@ -152,6 +153,29 @@ def update_notification_email():
         "message": f"Notifications will be sent to {notif_email}",
         "notification_email": notif_email,
         "is_custom": True,
+    })
+
+
+@dashboard_bp.route("/update_email_opt_in", methods=["POST"])
+def update_email_opt_in():
+    """Toggle email reminders on or off."""
+    email = get_authenticated_email()
+    if not email:
+        return jsonify({"error": "Not authenticated"}), 401
+
+    data = request.get_json()
+    opt_in = bool(data.get("email_opt_in"))
+
+    credential = EncryptedCredential.query.filter_by(vt_email=email).first()
+    if not credential:
+        return jsonify({"error": "User not found"}), 404
+
+    credential.email_opt_in = opt_in
+    db.session.commit()
+
+    return jsonify({
+        "message": "Email reminders " + ("enabled" if opt_in else "disabled"),
+        "email_opt_in": opt_in,
     })
 
 
@@ -294,3 +318,24 @@ def update_sms_preferences():
         "phone_number": "",
         "sms_opt_in": False,
     })
+
+
+@dashboard_bp.route("/delete_account", methods=["POST"])
+def delete_account():
+    """Permanently delete the user's account and all associated data."""
+    email = get_authenticated_email()
+    if not email:
+        return jsonify({"error": "Not authenticated"}), 401
+
+    credential = EncryptedCredential.query.filter_by(vt_email=email).first()
+    if not credential:
+        return jsonify({"error": "Account not found"}), 404
+
+    db.session.delete(credential)
+    db.session.commit()
+    session.clear()
+
+    import logging
+    logging.getLogger(__name__).info("Account deleted: %s", email)
+
+    return jsonify({"message": "Account deleted", "redirect": "/"})
