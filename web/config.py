@@ -29,6 +29,11 @@ class Config:
     SMTP_FROM_NAME = os.getenv("SMTP_FROM_NAME", "VT Email Saver")
     SMTP_USE_TLS = os.getenv("SMTP_USE_TLS", "true")
 
+    # Twilio SMS (optional — leave blank to disable)
+    TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "")
+    TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "")
+    TWILIO_FROM_NUMBER = os.getenv("TWILIO_FROM_NUMBER", "")
+
 class DevelopmentConfig(Config):
     """Local dev — SQLite fallback, cookies don't require HTTPS."""
     DEBUG = True

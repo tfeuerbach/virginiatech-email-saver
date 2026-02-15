@@ -45,6 +45,7 @@ sortedcontainers==2.4.0
 soupsieve==2.6
 SQLAlchemy==2.0.37
 trio==0.28.0
+twilio>=9.0.0
 trio-websocket==0.11.1
 typing_extensions==4.12.2
 urllib3==2.3.0

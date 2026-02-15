@@ -4,7 +4,8 @@ services:
     ports:
       - "5000:5000"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     env_file:
       - .env
     environment:
@@ -21,6 +22,12 @@ services:
       - .env
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
 
   # Cloudflare Tunnel — exposes the web service to vtemailsaver.tfeuerbach.dev
   # Set CLOUDFLARE_TUNNEL_TOKEN in .env, then: docker compose --profile tunnel up -d

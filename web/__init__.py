@@ -16,29 +16,38 @@ logging.basicConfig(
 )
 
 def ensure_instance_dir(instance_path):
-    """Create the instance dir if it doesn't exist yet."""
+    """mkdir -p for the instance folder."""
     if not os.path.exists(instance_path):
         os.makedirs(instance_path)
 
-def wait_for_db(app):
-    """Block until Postgres is accepting connections."""
+def wait_for_db(app, max_retries=15, wait_seconds=3):
+    """Block until Postgres is accepting connections.
+
+    After every failed attempt we dispose the entire connection pool so
+    SQLAlchemy doesn't hand a stale/dead connection to db.create_all().
+    """
+    logger = logging.getLogger(__name__)
     with app.app_context():
-        retries = 5
-        while retries > 0:
+        for attempt in range(1, max_retries + 1):
             try:
                 db.session.execute(text("SELECT 1"))
-                logging.getLogger(__name__).info("Database is ready!")
+                db.session.commit()
+                logger.info("Database is ready (attempt %d/%d)", attempt, max_retries)
                 return
             except Exception:
-                logging.getLogger(__name__).info("Waiting for database... (%d/5)", 5 - retries)
-                retries -= 1
-                time.sleep(5)
+                db.session.rollback()
+                db.engine.dispose()          # kill any pooled dead connections
+                logger.info(
+                    "Waiting for database... (%d/%d)", attempt, max_retries
+                )
+                time.sleep(wait_seconds)
+
+        raise RuntimeError(
+            f"Could not connect to database after {max_retries} attempts"
+        )
 
 def _add_column_if_missing(app, table, column, col_type):
-    """Add a column to an existing table if it doesn't exist yet.
-
-    Only runs for Postgres — SQLite's create_all handles new DBs fine.
-    """
+    """Poor-man's migration — skips if column already exists. Postgres only."""
     if not app.config["SQLALCHEMY_DATABASE_URI"].startswith("postgresql"):
         return
     try:
@@ -72,7 +81,7 @@ def create_app():
     app = Flask(__name__, instance_path=instance_path, static_folder="static")
     app.config.from_object(ActiveConfig)
 
-    # Fix relative sqlite paths to be absolute
+    # make sqlite paths absolute so they land in instance/
     if app.config["SQLALCHEMY_DATABASE_URI"].startswith("sqlite:"):
         app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + os.path.join(instance_path, "encrypted_credentials.db")
 
@@ -86,18 +95,18 @@ def create_app():
     with app.app_context():
         db.create_all()
 
-        # lightweight migration: add columns that db.create_all() won't add
-        # to an existing table. safe to re-run — each one checks first.
+        # db.create_all() won't touch existing tables — bolt on new columns here
+        _add_column_if_missing(app, "encrypted_credential", "notification_email", "VARCHAR(120)")
         _add_column_if_missing(app, "encrypted_credential", "last_notification_sent", "TIMESTAMP")
+        _add_column_if_missing(app, "encrypted_credential", "phone_number", "VARCHAR(20)")
+        _add_column_if_missing(app, "encrypted_credential", "sms_opt_in", "BOOLEAN DEFAULT FALSE")
 
     register_routes(app)
 
     logger = logging.getLogger(__name__)
     logger.info("Running in %s mode (Debug=%s)", ActiveConfig.__name__, app.debug)
 
-    # Start background login scheduler.
-    # With flask dev server the reloader spawns a child — only start there.
-    # With gunicorn (or anything else) there's no reloader, so always start.
+    # avoid double-starting the scheduler in Flask's reloader parent process
     is_werkzeug_reloader_parent = (
         app.debug and os.environ.get("WERKZEUG_RUN_MAIN") is None
         and "gunicorn" not in (os.environ.get("SERVER_SOFTWARE") or "")

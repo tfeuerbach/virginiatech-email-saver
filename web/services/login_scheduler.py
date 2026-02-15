@@ -10,6 +10,7 @@ from web.database import db
 from web.models import EncryptedCredential
 from web.services.google_login import GoogleLogin
 from web.services import email_notifier
+from web.services import sms_notifier
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +23,7 @@ scheduler_status = {
     "logins_attempted": 0,
     "logins_succeeded": 0,
     "notifications_sent": 0,
+    "sms_sent": 0,
     "next_check": None,
 }
 
@@ -57,7 +59,7 @@ def send_login_reminders(app):
                 continue
 
             success = email_notifier.send_login_reminder(
-                to_email=user.vt_email,
+                to_email=user.effective_notification_email,
                 next_login_utc=next_login,
                 cadence_days=user.login_cadence_days,
             )
@@ -106,6 +108,18 @@ def process_users_due_for_login(app):
                 try:
                     decrypted = kms_manager.decrypt(user.encrypted_key)
                     email, username, password = decrypted.split(",")
+
+                    # text opted-in users ~1 min before we trigger the Duo push
+                    if user.sms_opt_in and user.phone_number:
+                        if sms_notifier.is_configured():
+                            sms_notifier.send_login_sms(user.phone_number)
+                            logger.info(
+                                "SMS heads-up sent to %s, waiting 60s before login",
+                                user.phone_number,
+                            )
+                            time.sleep(60)
+                        else:
+                            logger.debug("Twilio not configured, skipping SMS for %s", email)
 
                     logger.info(
                         "Attempting scheduled login for %s (cadence=%dd)",
