@@ -244,6 +244,8 @@
     <footer class="dash-footer">
         <a href="https://github.com/tfeuerbach/virginiatech-email-saver" target="_blank" rel="noopener noreferrer">View Source</a>
         <span class="dashboard-footer-sep">&middot;</span>
+        <a href="#" id="footer-privacy-link" class="privacy-link">Privacy Policy</a>
+        <span class="dashboard-footer-sep">&middot;</span>
         <a href="https://buymeacoffee.com/tfeuerbach" target="_blank" rel="noopener noreferrer" class="btn-coffee-inline" aria-label="Buy me a coffee">
             <i class="bi bi-cup-hot" aria-hidden="true"></i>
             Buy me a coffee
@@ -269,8 +271,8 @@
 
             <h3>What data I collect</h3>
             <ul>
-                <li><strong>VT email address</strong> &mdash; used to identify your account and log in on your behalf.</li>
-                <li><strong>VT password</strong> &mdash; encrypted with AWS KMS before it touches the database. The plaintext is never written to disk or logged.</li>
+                <li><strong>VT email address</strong> &mdash; stored as a plaintext account identifier. This is visible to the site administrator but is only used to identify your account and log in on your behalf.</li>
+                <li><strong>VT password</strong> &mdash; encrypted with AWS KMS before it touches the database. The plaintext is never written to disk or logged. It is only decrypted momentarily by the automated login system at login time and discarded immediately after.</li>
                 <li><strong>Phone number</strong> (optional) &mdash; only stored if you opt in to SMS reminders. Shared with Twilio solely for delivering text messages.</li>
                 <li><strong>Notification email</strong> (optional) &mdash; only stored if you choose to receive reminders at a different address.</li>
             </ul>
@@ -280,7 +282,7 @@
                 <li>Periodically log in to your VT Gmail via an automated browser session to prevent account deactivation.</li>
                 <li>Send you reminders (email and/or SMS) before each scheduled login so you can approve the Duo 2FA push.</li>
             </ul>
-            <p>I do <strong>not</strong> read, store, or forward any of your emails. The automated session logs in and immediately ends.</p>
+            <p>The automated session <strong>only</strong> logs in to keep your account active &mdash; it does not open, read, or interact with any emails, files, or account data. Your password is never visible to me; I can see your email address as an account identifier but have no access to your VT account itself.</p>
 
             <h3>SMS notifications</h3>
             <ul>

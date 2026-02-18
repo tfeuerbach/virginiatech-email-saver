@@ -205,9 +205,9 @@
 
     (function () {
         var modal = document.getElementById('privacy-modal');
-        var openBtn = document.getElementById('open-privacy-modal');
+        var openBtns = document.querySelectorAll('#open-privacy-modal, #footer-privacy-link');
         var closeBtn = document.getElementById('close-privacy-modal');
-        if (!modal || !openBtn) return;
+        if (!modal || !openBtns.length) return;
 
         function open() {
             modal.style.display = '';
@@ -218,7 +218,9 @@
             document.body.style.overflow = '';
         }
 
-        openBtn.addEventListener('click', function (e) { e.preventDefault(); open(); });
+        openBtns.forEach(function (btn) {
+            btn.addEventListener('click', function (e) { e.preventDefault(); open(); });
+        });
         closeBtn.addEventListener('click', close);
         modal.addEventListener('click', function (e) { if (e.target === modal) close(); });
         document.addEventListener('keydown', function (e) {
