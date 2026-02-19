@@ -1,13 +1,18 @@
+const DOTLOTTIE_VERSION = "0.63.0";
+const DOTLOTTIE_CDN = `https://esm.sh/@lottiefiles/dotlottie-web@${DOTLOTTIE_VERSION}`;
+const DOTLOTTIE_WASM = `https://cdn.jsdelivr.net/npm/@lottiefiles/dotlottie-web@${DOTLOTTIE_VERSION}/dist/dotlottie-player.wasm`;
+
 let DotLottie;
 async function loadDotLottie() {
   if (!DotLottie) {
     try {
       if (typeof window !== "undefined") {
-        // Browser (use CDN import)
-        const { DotLottie: LoadedDotLottie } = await import("https://esm.sh/@lottiefiles/dotlottie-web");
-        DotLottie = LoadedDotLottie;
+        const mod = await import(DOTLOTTIE_CDN);
+        if (mod.setWasmUrl) {
+          mod.setWasmUrl(DOTLOTTIE_WASM);
+        }
+        DotLottie = mod.DotLottie;
       } else {
-        // Cypress (use local module)
         DotLottie = require("@lottiefiles/dotlottie-web").DotLottie;
       }
     } catch (error) {

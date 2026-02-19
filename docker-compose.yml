@@ -12,6 +12,7 @@ services:
       - DATABASE_URL=${DATABASE_URL}
     volumes:
       - ./web/static:/app/web/static
+      - ./web/templates:/app/web/templates
     restart: always
 
   db:

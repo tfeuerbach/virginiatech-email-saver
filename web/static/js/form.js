@@ -60,4 +60,45 @@
     document.querySelectorAll('.fade-in').forEach(function (el) {
         observer.observe(el);
     });
+
+    // -- scroll-linked slide-up for How It Works section --
+    var howSection = document.getElementById('how-it-works');
+    var scrollHint = document.querySelector('.scroll-hint');
+    var issueLink = document.querySelector('.issue-link');
+    if (howSection) {
+        var mainContainer = document.getElementById('main-container');
+        var cardGlass = document.querySelector('.card-glass');
+        var cardBottomDoc = cardGlass
+            ? cardGlass.getBoundingClientRect().bottom + window.pageYOffset
+            : 0;
+        var mainHeight = mainContainer ? mainContainer.offsetHeight : window.innerHeight;
+        var maxPull = Math.max(mainHeight - cardBottomDoc - 246, 0);
+
+        // lock the page height so margin changes can't cause scroll jiggle
+        document.body.style.minHeight = document.documentElement.scrollHeight + 'px';
+
+        var ticking = false;
+
+        window.addEventListener('scroll', function () {
+            if (!ticking) {
+                requestAnimationFrame(function () {
+                    var scrollY = window.pageYOffset;
+                    var pull = Math.min(scrollY * 0.8, maxPull);
+                    howSection.style.marginTop = (-pull) + 'px';
+
+                    // fade out scroll hint + issue link as user scrolls
+                    var fade = Math.max(1 - scrollY / 120, 0);
+                    if (scrollHint) {
+                        scrollHint.style.opacity = fade;
+                        scrollHint.style.pointerEvents = fade < 0.1 ? 'none' : '';
+                    }
+                    if (issueLink) {
+                        issueLink.style.opacity = fade;
+                    }
+                    ticking = false;
+                });
+                ticking = true;
+            }
+        }, { passive: true });
+    }
 })();
