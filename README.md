@@ -274,6 +274,7 @@ A GitHub Actions workflow (`.github/workflows/ci.yml`) runs both lint and test o
 ## Planned Improvements
 
 - **Alembic migrations** — Replace the current `_add_column_if_missing` approach with [Alembic](https://alembic.sqlalchemy.org/) for versioned, reversible schema migrations.
+- **Mock AWS in tests** — Add mocked KMS tests (via `unittest.mock`) so encrypt/decrypt logic is covered in CI without real AWS credentials. The current KMS tests are skipped in CI and only run locally with valid credentials.
 
 ## Contributing
 
