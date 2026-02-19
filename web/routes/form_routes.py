@@ -1,6 +1,6 @@
 import logging
 import threading
-from flask import Blueprint, render_template, request, jsonify, current_app, session
+from flask import Blueprint, render_template, request, jsonify, current_app, session, redirect, url_for
 from datetime import datetime
 from web.models import EncryptedCredential
 from web.database import db
@@ -125,4 +125,4 @@ def submit():
 def logout():
     """Clear the session and send them back to the form."""
     session.clear()
-    return render_template("form.html")
+    return redirect(url_for("form.index"))

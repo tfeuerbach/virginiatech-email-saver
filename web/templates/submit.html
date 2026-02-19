@@ -1,80 +1,23 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='images/favicon.ico') }}">
-    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='images/favicon-32x32.png') }}">
-    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='images/favicon-16x16.png') }}">
-    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='images/apple-touch-icon.png') }}">
-    <title>Processing — VT Email Saver</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-</head>
-<body>
-    <div id="main-container">
-        <div class="card-glass">
-            <h2>Processing Your Submission</h2>
-            <div id="submit-animation-container">
-                <canvas id="storing-animation" class="animation visible"></canvas>
-                <canvas id="login-animation" class="animation hidden"></canvas>
-                <canvas id="push-animation" class="animation hidden"></canvas>
-                <canvas id="success-animation" class="animation hidden"></canvas>
-                <canvas id="error-animation" class="animation hidden"></canvas>
-            </div>
-            <p id="status-message">Storing your credentials securely...</p>
+{% extends "base.html" %}
+
+{% block title %}Processing — VT Email Saver{% endblock %}
+
+{% block content %}
+<main id="main-container">
+    <div class="card-glass">
+        <h2>Processing Your Submission</h2>
+        <div id="submit-animation-container">
+            <canvas id="storing-animation" class="animation visible"></canvas>
+            <canvas id="login-animation" class="animation hidden"></canvas>
+            <canvas id="push-animation" class="animation hidden"></canvas>
+            <canvas id="success-animation" class="animation hidden"></canvas>
+            <canvas id="error-animation" class="animation hidden"></canvas>
         </div>
+        <p id="status-message">Storing your credentials securely...</p>
     </div>
+</main>
+{% endblock %}
 
-    <script type="module">
-        import { animationSteps, animationUrls } from "/static/js/animationConfig.js";
-        import { initializeAnimation, updateAnimationVisibility } from "/static/js/animationUtils.js";
-
-        Object.entries(animationUrls).forEach(([step, url]) => {
-            initializeAnimation(animationSteps[step], url);
-        });
-
-        let lastStep = 1;
-
-        const stepMessages = {
-            1: "Storing your credentials securely...",
-            2: "Attempting to log in...",
-            3: "Sending a push notification to your device...",
-            4: "Login Successful! Redirecting to your dashboard...",
-            5: "Something went wrong. Redirecting...",
-        };
-
-        function updateProgress(step, errorMsg) {
-            if (step === lastStep) return;
-            lastStep = step;
-
-            updateAnimationVisibility(step, animationSteps);
-
-            const statusMessage = document.getElementById("status-message");
-            if (step === 5 && errorMsg) {
-                statusMessage.textContent = errorMsg;
-            } else {
-                statusMessage.textContent = stepMessages[step] || "Processing...";
-            }
-
-            if (step === 4) {
-                setTimeout(() => { window.location.href = "/dashboard"; }, 1000);
-            } else if (step === 5) {
-                setTimeout(() => { window.location.href = "/"; }, 3000);
-            }
-        }
-
-        function pollProgress() {
-            fetch("/get_progress")
-                .then((response) => response.json())
-                .then((data) => {
-                    updateProgress(data.step, data.error);
-                })
-                .catch((error) => {
-                    console.error("Error polling progress:", error);
-                });
-        }
-
-        setInterval(pollProgress, 1000);
-    </script>
-</body>
-</html>
+{% block scripts %}
+    <script type="module" src="{{ url_for('static', filename='js/submit.js') }}"></script>
+{% endblock %}

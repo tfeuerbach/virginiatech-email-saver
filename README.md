@@ -13,6 +13,8 @@
 
 Keep your Virginia Tech Gmail account active with automated logins. This Flask-based web app securely stores your credentials, automates the entire VT SSO + Duo 2FA login flow, and lets you control how often it runs.
 
+**Live at [vtemailsaver.tfeuerbach.dev](https://vtemailsaver.tfeuerbach.dev)** — or self-host it yourself if you'd rather not trust a third party with your credentials. Everything you need is in this repo.
+
 ## Architecture
 
 ```mermaid
@@ -129,62 +131,88 @@ Your credentials are **never stored in plaintext**. The source code is fully ope
 | Layer | Technology |
 |-------|-----------|
 | Backend | Flask, Gunicorn, SQLAlchemy |
-| Database | PostgreSQL (production), SQLite (development) |
+| Database | PostgreSQL or SQLite (your choice — see [Getting Started](#getting-started)) |
 | Encryption | AWS KMS via `aws-encryption-sdk` |
 | Notifications | AWS SES (email), Twilio (SMS), iCalendar (.ics) |
 | Browser Automation | Selenium + headless Chrome |
 | Frontend | HTML/CSS/JS, Bootstrap 5, Lottie animations |
 | Infrastructure | Docker Compose, Cloudflare Tunnel |
 
-## Development vs. Production
-
-**Development** — SQLite, Flask dev server with debug mode and auto-reload.
-
-**Production** — PostgreSQL, Gunicorn (single worker, 4 threads), Docker Compose, optional Cloudflare Tunnel for HTTPS exposure.
-
 ## Prerequisites
 
 - Python 3.11+
-- Docker + Docker Compose (for production)
+- Docker + Docker Compose (for production, or if you prefer PostgreSQL locally)
 - AWS account with a KMS key
-- Google Chrome (installed automatically in Docker)
+- Google Chrome (installed automatically in Docker; required locally for Selenium)
 
-## Installation
+## Getting Started
 
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/tfeuerbach/virginiatech-email-saver.git
-   cd virginiatech-email-saver
-   ```
+### 1. Clone and configure
 
-2. **Set up a virtual environment** (for local development):
-   ```bash
-   python3 -m venv .envs/vt_login
-   source .envs/vt_login/bin/activate
-   pip install -r requirements.txt
-   ```
+```bash
+git clone https://github.com/tfeuerbach/virginiatech-email-saver.git
+cd virginiatech-email-saver
+cp .env.example .env
+```
 
-3. **Configure environment variables**:
-   Copy `.env.example` to `.env` and fill in your values:
-   ```
-   AWS_ACCESS_KEY_ID=<your-access-key>
-   AWS_SECRET_ACCESS_KEY=<your-secret-key>
-   KMS_KEY_ID=arn:aws:kms:<region>:<account-id>:key/<key-id>
-   SECRET_KEY=<random-secret-for-flask-sessions>
-   FLASK_ENV=development
-   ```
+Open `.env` and fill in your AWS KMS credentials and a `SECRET_KEY`. Everything else is optional.
 
-4. **Run locally**:
-   ```bash
-   flask --app web run
-   ```
+### 2. Choose your database
 
-5. **Run in Docker** (production):
-   ```bash
-   docker compose up --build -d
-   ```
+The app supports both **SQLite** (zero setup) and **PostgreSQL** (production-ready). Set `DATABASE_URL` in your `.env` to pick one.
 
-   See [DEPLOY.md](DEPLOY.md) for full production deployment instructions including Cloudflare Tunnel setup.
+#### Option A: SQLite (simplest for local dev)
+
+Leave `DATABASE_URL` unset or comment it out. The app defaults to an SQLite file at `instance/encrypted_credentials.db`, created automatically on first run. No database server needed.
+
+```env
+FLASK_ENV=development
+# DATABASE_URL=            ← leave blank or remove entirely
+```
+
+#### Option B: PostgreSQL (recommended for production / Docker)
+
+Provide a Postgres connection string. If you're using Docker Compose, the included `db` service handles this automatically:
+
+```env
+FLASK_ENV=production
+DATABASE_URL=postgresql://postgres:yourpassword@db:5432/encrypted_credentials
+```
+
+For local Postgres without Docker, point to your own instance:
+
+```env
+FLASK_ENV=development
+DATABASE_URL=postgresql://postgres:yourpassword@localhost:5432/encrypted_credentials
+```
+
+### 3. Run the app
+
+#### Local development (SQLite or local Postgres)
+
+```bash
+python3 -m venv .envs/vt_login
+source .envs/vt_login/bin/activate
+pip install -r requirements.txt
+flask --app web run
+```
+
+#### Docker Compose (PostgreSQL, Gunicorn, production-ready)
+
+```bash
+docker compose up --build -d
+```
+
+See [DEPLOY.md](DEPLOY.md) for full production deployment instructions including Cloudflare Tunnel setup.
+
+### Development vs. Production
+
+| | Development | Production |
+|---|---|---|
+| **Database** | SQLite (default) or Postgres | PostgreSQL |
+| **Server** | Flask dev server (debug + auto-reload) | Gunicorn (1 worker, 4 threads) |
+| **HTTPS** | Not required (cookies work over HTTP) | Required (secure cookies, Cloudflare Tunnel) |
+| **Config** | `FLASK_ENV=development` | `FLASK_ENV=production` |
 
 ## Usage
 
@@ -225,6 +253,10 @@ pytest
 ```
 
 Covers unit tests (models, KMS encryption, authentication, CSRF, cadence validation) and integration tests (database operations).
+
+## Planned Improvements
+
+- **Alembic migrations** — Replace the current `_add_column_if_missing` approach with [Alembic](https://alembic.sqlalchemy.org/) for versioned, reversible schema migrations.
 
 ## Contributing
 

@@ -1,36 +1,27 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% extends "base.html" %}
+
+{% block meta %}
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="description" content="Keep your Virginia Tech Gmail account active with automated logins.">
     <meta property="og:title" content="Virginia Tech Email Saver">
     <meta property="og:description" content="Keep your Virginia Tech Gmail account active with automated logins.">
     <meta property="og:image" content="{{ url_for('static', filename='images/android-chrome-512x512.png') }}">
     <meta property="og:type" content="website">
-    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='images/favicon.ico') }}">
-    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='images/favicon-32x32.png') }}">
-    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='images/favicon-16x16.png') }}">
-    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='images/apple-touch-icon.png') }}">
-    <title>Virginia Tech Email Saver</title>
-    <!-- Bootstrap CSS -->
-    <link
-    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
-    rel="stylesheet"
-    integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM"
-    crossorigin="anonymous"
-    />
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+{% endblock %}
+
+{% block title %}Virginia Tech Email Saver{% endblock %}
+
+{% block head %}
     <script type="module" src="{{ url_for('static', filename='js/animations.js') }}"></script>
-</head>
-<body>
-    <div id="main-container">
+{% endblock %}
+
+{% block content %}
+    <main id="main-container">
         <div class="hero-content">
-            <div class="page-title">
+            <header class="page-title">
                 <h1>Virginia Tech Email Saver</h1>
                 <p class="tagline">Keep your VT Gmail alive</p>
-            </div>
+            </header>
 
             <div class="card-glass">
             <form id="credentials-form" method="POST" action="/submit">
@@ -42,104 +33,60 @@
                     <label for="vt_password" class="form-label">Password</label>
                     <div class="input-group">
                         <input type="password" id="vt_password" name="vt_password" class="form-control" required autocomplete="current-password" placeholder="Enter your password">
-                        <button type="button" id="toggle-password" class="btn btn-outline-light" tabindex="-1" title="Show password">
-                            <svg id="eye-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
-                                <path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z"/>
-                                <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z"/>
-                            </svg>
-                            <svg id="eye-slash-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16" style="display:none;">
-                                <path d="M13.359 11.238C15.06 9.72 16 8 16 8s-3-5.5-8-5.5a7.028 7.028 0 0 0-2.79.588l.77.771A5.944 5.944 0 0 1 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.134 13.134 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755-.165.165-.337.328-.517.486l.708.709z"/>
-                                <path d="M11.297 9.176a3.5 3.5 0 0 0-4.474-4.474l.823.823a2.5 2.5 0 0 1 2.829 2.829l.822.822zm-2.943 1.299.822.822a3.5 3.5 0 0 1-4.474-4.474l.823.823a2.5 2.5 0 0 0 2.829 2.829z"/>
-                                <path d="M3.35 5.47c-.18.16-.353.322-.518.487A13.134 13.134 0 0 0 1.172 8l.195.288c.335.48.83 1.12 1.465 1.755C4.121 11.332 5.881 12.5 8 12.5c.716 0 1.39-.133 2.02-.36l.77.772A7.029 7.029 0 0 1 8 13.5C3 13.5 0 8 0 8s.939-1.721 2.641-3.238l.708.709zm10.296 8.884-12-12 .708-.708 12 12-.708.708z"/>
-                            </svg>
+                        <button type="button" id="toggle-password" class="btn btn-outline-light" tabindex="-1" aria-label="Toggle password visibility" title="Show password">
+                            <i id="eye-icon" class="bi bi-eye" aria-hidden="true"></i>
+                            <i id="eye-slash-icon" class="bi bi-eye-slash" style="display:none;" aria-hidden="true"></i>
                         </button>
                     </div>
                 </div>
                 <button type="submit">Submit</button>
             </form>
         </div>
-            <p class="issue-link">Something not working? <a href="https://github.com/tfeuerbach/virginiatech-email-saver/issues/new" target="_blank">Report an issue</a></p>
+            <p class="issue-link">Something not working? <a href="https://github.com/tfeuerbach/virginiatech-email-saver/issues/new" target="_blank" rel="noopener noreferrer">Report an issue</a></p>
         </div>
 
-        <!-- Scroll hint -->
         <a href="#how-it-works" class="scroll-hint" aria-label="Learn how it works">
             <span class="scroll-hint-text">How does this work?</span>
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16">
-                <path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/>
-            </svg>
+            <i class="bi bi-chevron-down" aria-hidden="true"></i>
         </a>
-    </div>
+    </main>
 
-    <!-- How It Works section -->
     <section id="how-it-works" class="how-it-works">
         <h2 class="section-heading fade-in">How It Works</h2>
         <p class="section-subheading fade-in">Your credentials stay encrypted and secure at every step</p>
 
-        <!-- Flow diagram -->
         <div class="flow-diagram fade-in">
             <div class="flow-step">
-                <div class="flow-icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" viewBox="0 0 16 16">
-                        <path d="M11 5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm-9 8c0 1 1 1 1 1h5.256A4.493 4.493 0 0 1 8 12.5a4.49 4.49 0 0 1 1.544-3.393C9.077 9.038 8.564 9 8 9c-5 0-6 3-6 4Z"/>
-                        <path d="M12.5 16a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm.354-5.854 1.5 1.5a.5.5 0 0 1-.708.708L13 11.707V14.5a.5.5 0 0 1-1 0v-2.793l-.646.647a.5.5 0 0 1-.708-.708l1.5-1.5a.5.5 0 0 1 .708 0Z"/>
-                    </svg>
-                </div>
+                <div class="flow-icon" aria-hidden="true"><i class="bi bi-person-plus"></i></div>
                 <div class="flow-label">You submit</div>
                 <div class="flow-detail">Email &amp; password entered here</div>
             </div>
 
-            <div class="flow-arrow">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
-                    <path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/>
-                </svg>
-            </div>
+            <div class="flow-arrow" aria-hidden="true"><i class="bi bi-chevron-right"></i></div>
 
             <div class="flow-step">
-                <div class="flow-icon accent">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" viewBox="0 0 16 16">
-                        <path d="M5.338 1.59a61.44 61.44 0 0 0-2.837.856.481.481 0 0 0-.328.39c-.554 4.157.726 7.19 2.253 9.188a10.725 10.725 0 0 0 2.287 2.233c.346.244.652.42.893.533.12.057.218.095.293.118a.55.55 0 0 0 .101.025.615.615 0 0 0 .1-.025c.076-.023.174-.061.294-.118.24-.113.547-.29.893-.533a10.726 10.726 0 0 0 2.287-2.233c1.527-1.997 2.807-5.031 2.253-9.188a.48.48 0 0 0-.328-.39c-.651-.213-1.75-.56-2.837-.855C9.552 1.29 8.531 1.067 8 1.067c-.53 0-1.552.223-2.662.524zM5.072.56C6.157.265 7.31 0 8 0s1.843.265 2.928.56c1.11.3 2.229.655 2.887.87a1.54 1.54 0 0 1 1.044 1.262c.596 4.477-.787 7.795-2.465 9.99a11.775 11.775 0 0 1-2.517 2.453 7.159 7.159 0 0 1-1.048.625c-.28.132-.581.24-.829.24s-.548-.108-.829-.24a7.158 7.158 0 0 1-1.048-.625 11.777 11.777 0 0 1-2.517-2.453C1.928 10.487.545 7.169 1.141 2.692A1.54 1.54 0 0 1 2.185 1.43 62.456 62.456 0 0 1 5.072.56z"/>
-                        <path d="M10.854 5.146a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7.5 7.793l2.646-2.647a.5.5 0 0 1 .708 0z"/>
-                    </svg>
-                </div>
+                <div class="flow-icon accent" aria-hidden="true"><i class="bi bi-shield-check"></i></div>
                 <div class="flow-label">Encrypted</div>
                 <div class="flow-detail">AWS KMS encrypts your password</div>
             </div>
 
-            <div class="flow-arrow">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
-                    <path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/>
-                </svg>
-            </div>
+            <div class="flow-arrow" aria-hidden="true"><i class="bi bi-chevron-right"></i></div>
 
             <div class="flow-step">
-                <div class="flow-icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" viewBox="0 0 16 16">
-                        <path d="M1 2.828c.885-.37 2.154-.769 3.388-.893 1.33-.134 2.458.063 3.112.752v9.746c-.935-.53-2.12-.603-3.213-.493-1.18.12-2.37.461-3.287.811V2.828zm7.5-.141c.654-.689 1.782-.886 3.112-.752 1.234.124 2.503.523 3.388.893v9.923c-.918-.35-2.107-.692-3.287-.81-1.094-.111-2.278-.039-3.213.492V2.687zM8 1.783C7.015.936 5.587.81 4.287.94c-1.514.153-3.042.672-3.994 1.105A.5.5 0 0 0 0 2.5v11a.5.5 0 0 0 .707.455c.882-.4 2.303-.881 3.68-1.02 1.409-.142 2.59.087 3.223.877a.5.5 0 0 0 .78 0c.633-.79 1.814-1.019 3.222-.877 1.378.139 2.8.62 3.681 1.02A.5.5 0 0 0 16 13.5v-11a.5.5 0 0 0-.293-.455c-.952-.433-2.48-.952-3.994-1.105C10.413.809 8.985.936 8 1.783z"/>
-                    </svg>
-                </div>
+                <div class="flow-icon" aria-hidden="true"><i class="bi bi-database"></i></div>
                 <div class="flow-label">Stored</div>
                 <div class="flow-detail">Ciphertext saved to database</div>
             </div>
 
-            <div class="flow-arrow">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
-                    <path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/>
-                </svg>
-            </div>
+            <div class="flow-arrow" aria-hidden="true"><i class="bi bi-chevron-right"></i></div>
 
             <div class="flow-step">
-                <div class="flow-icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" viewBox="0 0 16 16">
-                        <path d="M5.5 2A3.5 3.5 0 0 0 2 5.5v5A3.5 3.5 0 0 0 5.5 14h5a3.5 3.5 0 0 0 3.5-3.5V8a.5.5 0 0 1 1 0v2.5a4.5 4.5 0 0 1-4.5 4.5h-5A4.5 4.5 0 0 1 1 10.5v-5A4.5 4.5 0 0 1 5.5 1H8a.5.5 0 0 1 0 1H5.5z"/>
-                        <path d="M16 3a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"/>
-                    </svg>
-                </div>
+                <div class="flow-icon" aria-hidden="true"><i class="bi bi-robot"></i></div>
                 <div class="flow-label">Automated</div>
                 <div class="flow-detail">Selenium logs in on schedule</div>
             </div>
         </div>
 
-        <!-- Detail cards -->
         <div class="info-cards">
             <div class="info-card fade-in delay-1">
                 <h3>Zero plaintext storage</h3>
@@ -150,75 +97,25 @@
                 <p>A background scheduler checks daily for accounts due for login. It decrypts your credentials only at login time, drives a headless Chrome browser through VT's SSO + Duo 2FA, then discards the plaintext.</p>
             </div>
             <div class="info-card fade-in delay-3">
-                <h3>Fully open source</h3>
-                <p>Every line of code is on <a href="https://github.com/tfeuerbach/virginiatech-email-saver" target="_blank">GitHub</a>. No tracking, no analytics, no third-party data sharing. Audit it yourself.</p>
+                <h3>You stay in the loop</h3>
+                <p>Get an email, text, or calendar reminder before each login so you're ready to approve the Duo push. Toggle notifications on or off from your dashboard.</p>
             </div>
         </div>
     </section>
 
-    <!-- Footer -->
     <footer class="site-footer">
         <small>
-            Created by <a href="https://github.com/tfeuerbach" target="_blank">Thomas Feuerbach</a> |
-            <a href="https://github.com/tfeuerbach/virginiatech-email-saver" target="_blank">View Source on GitHub</a>
+            Created by <a href="https://github.com/tfeuerbach" target="_blank" rel="noopener noreferrer">Thomas Feuerbach</a> |
+            <a href="https://github.com/tfeuerbach/virginiatech-email-saver" target="_blank" rel="noopener noreferrer">View Source on GitHub</a>
         </small>
     </footer>
+{% endblock %}
 
-    <!-- Bootstrap JS -->
+{% block scripts %}
     <script
         src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz"
         crossorigin="anonymous"
     ></script>
-    <script>
-        // Custom validation messages
-        document.getElementById('credentials-form').addEventListener('submit', function (e) {
-            const emailInput = document.getElementById('vt_email');
-            const passwordInput = document.getElementById('vt_password');
-
-            if (!emailInput.value) {
-                emailInput.setCustomValidity("Please enter your Virginia Tech email address.");
-            } else {
-                emailInput.setCustomValidity("");
-            }
-
-            if (!passwordInput.value) {
-                passwordInput.setCustomValidity("Please enter your password.");
-            } else {
-                passwordInput.setCustomValidity("");
-            }
-        });
-
-        // Reset custom message on input
-        document.querySelectorAll('input').forEach(input => {
-            input.addEventListener('input', function () {
-                this.setCustomValidity("");
-            });
-        });
-
-        // Password visibility toggle
-        document.getElementById('toggle-password').addEventListener('click', function () {
-            const passwordInput = document.getElementById('vt_password');
-            const eyeIcon = document.getElementById('eye-icon');
-            const eyeSlashIcon = document.getElementById('eye-slash-icon');
-            const isHidden = passwordInput.type === 'password';
-            passwordInput.type = isHidden ? 'text' : 'password';
-            eyeIcon.style.display = isHidden ? 'none' : 'block';
-            eyeSlashIcon.style.display = isHidden ? 'block' : 'none';
-            this.title = isHidden ? 'Hide password' : 'Show password';
-            passwordInput.focus();
-        });
-
-        // Fade in elements as they scroll into view
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('visible');
-                }
-            });
-        }, { threshold: 0.15 });
-
-        document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
-    </script>
-</body>
-</html>
+    <script src="{{ url_for('static', filename='js/form.js') }}"></script>
+{% endblock %}

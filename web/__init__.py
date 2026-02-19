@@ -1,7 +1,7 @@
 import os
 import time
 import logging
-from flask import Flask
+from flask import Flask, render_template
 from sqlalchemy import text
 from web.csrf import csrf
 from web.database import db
@@ -103,6 +103,38 @@ def create_app():
         _add_column_if_missing(app, "encrypted_credential", "sms_opt_in", "BOOLEAN DEFAULT FALSE")
 
     register_routes(app)
+
+    # -- custom error pages --
+    @app.errorhandler(404)
+    def page_not_found(e):
+        return render_template("errors/404.html"), 404
+
+    @app.errorhandler(500)
+    def internal_server_error(e):
+        return render_template("errors/500.html"), 500
+
+    # -- security headers on every response --
+    @app.after_request
+    def set_security_headers(response):
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        if not app.debug:
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        # CSP: allow our own assets, Bootstrap/Fonts CDN, Lottie (esm.sh + WASM workers)
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' 'wasm-unsafe-eval' https://cdn.jsdelivr.net https://esm.sh blob:; "
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
+            "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; "
+            "img-src 'self' data:; "
+            "connect-src 'self' https://esm.sh https://cdn.jsdelivr.net; "
+            "worker-src 'self' blob:; "
+            "frame-ancestors 'none';"
+        )
+        return response
 
     logger = logging.getLogger(__name__)
     logger.info("Running in %s mode (Debug=%s)", ActiveConfig.__name__, app.debug)
