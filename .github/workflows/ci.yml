@@ -45,4 +45,8 @@ jobs:
         env:
           FLASK_ENV: development
           SECRET_KEY: ci-test-secret
+          AWS_REGION: us-east-1
+          AWS_ACCESS_KEY_ID: testing
+          AWS_SECRET_ACCESS_KEY: testing
+          KMS_KEY_ID: arn:aws:kms:us-east-1:000000000000:key/test
         run: pytest tests/ -v --tb=short
