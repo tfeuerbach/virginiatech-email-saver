@@ -63,12 +63,14 @@ class GoogleLogin:
 
             # Check for Google-side errors
             try:
-                error_element = self.driver.find_element(By.XPATH, "//*[contains(@class, 'error') or contains(@jsname, 'B34EJ')]")
+                error_element = self.driver.find_element(
+                    By.XPATH, "//*[contains(@class, 'error') or contains(@jsname, 'B34EJ')]"
+                )
                 if error_element.is_displayed():
                     error_text = error_element.text
                     logger.warning("Error on accounts.google.com: %s", error_text)
                     return {"success": False, "error": error_text}
-            except:
+            except Exception:
                 pass
 
             # Enter VT CAS credentials
@@ -86,7 +88,7 @@ class GoogleLogin:
                     error_text = error_element.text
                     logger.warning("Login error: %s", error_text)
                     return {"success": False, "error": error_text}
-            except:
+            except Exception:
                 pass
 
             # Wait for Duo 2FA
@@ -102,12 +104,14 @@ class GoogleLogin:
                 # Auto-click "Yes, this is my device" if it shows up
                 if "duosecurity.com" in current_url and not duo_prompt_handled:
                     try:
-                        yes_button = self.driver.find_element(By.XPATH, "//button[contains(text(),'Yes, this is my device')]")
+                        yes_button = self.driver.find_element(
+                            By.XPATH, "//button[contains(text(),'Yes, this is my device')]"
+                        )
                         if yes_button.is_displayed():
                             yes_button.click()
                             duo_prompt_handled = True
                             logger.info("Clicked 'Yes, this is my device'.")
-                    except:
+                    except Exception:
                         pass
 
                 # We're in Gmail — login worked

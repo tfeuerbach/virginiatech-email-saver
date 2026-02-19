@@ -2,6 +2,7 @@
 
 from datetime import datetime
 from unittest.mock import patch
+
 from web.database import db
 from web.models import EncryptedCredential
 
@@ -34,6 +35,7 @@ def _login(client, email="test@vt.edu"):
 
 
 # --- Unauthenticated access ---
+
 
 def test_index_loads(client):
     resp = client.get("/")
@@ -72,6 +74,7 @@ def test_schedule_logins_rejects_without_session(client):
 
 # --- Authenticated access ---
 
+
 @_mock_decrypt
 def test_dashboard_loads_with_session(mock_dec, client):
     _seed_user()
@@ -102,6 +105,7 @@ def test_get_progress_works_with_session(client):
 
 # --- Logout ---
 
+
 @_mock_decrypt
 def test_logout_clears_session(mock_dec, client):
     _seed_user()
@@ -115,6 +119,7 @@ def test_logout_clears_session(mock_dec, client):
 
 
 # --- Cadence validation ---
+
 
 def test_update_cadence_valid(client):
     _seed_user()

@@ -1,5 +1,6 @@
 import os
 import secrets
+
 from dotenv import load_dotenv
 
 basedir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -8,6 +9,7 @@ load_dotenv(os.path.join(basedir, ".env"))
 
 class Config:
     """Shared config — everything reads from .env."""
+
     AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
     AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
     AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
@@ -34,21 +36,22 @@ class Config:
     TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "")
     TWILIO_FROM_NUMBER = os.getenv("TWILIO_FROM_NUMBER", "")
 
+
 class DevelopmentConfig(Config):
     """Local dev — SQLite fallback, cookies don't require HTTPS."""
+
     DEBUG = True
-    SQLALCHEMY_DATABASE_URI = os.getenv(
-        "DATABASE_URL", "sqlite:///../instance/encrypted_credentials.db"
-    )
+    SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL", "sqlite:///../instance/encrypted_credentials.db")
     SESSION_COOKIE_SECURE = False
+
 
 class ProductionConfig(Config):
     """Docker / deployed — expects Postgres, cookies require HTTPS."""
+
     DEBUG = False
-    SQLALCHEMY_DATABASE_URI = os.getenv(
-        "DATABASE_URL", "postgresql://postgres:postgres@db:5432/mydatabase"
-    )
+    SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@db:5432/mydatabase")
     SESSION_COOKIE_SECURE = True
+
 
 config_map = {
     "development": DevelopmentConfig,

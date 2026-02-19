@@ -1,10 +1,12 @@
 import logging
 import threading
-from flask import Blueprint, render_template, request, jsonify, current_app, session, redirect, url_for
 from datetime import datetime
-from web.models import EncryptedCredential
-from web.database import db
+
+from flask import Blueprint, current_app, jsonify, redirect, render_template, request, session, url_for
+
 from kms.kms_manager import KMSManager
+from web.database import db
+from web.models import EncryptedCredential
 from web.services.google_login import GoogleLogin
 
 logger = logging.getLogger(__name__)
@@ -16,11 +18,13 @@ kms_manager = KMSManager()
 TEST_EMAIL = "test@vt.edu"
 TEST_PASSWORD = "testuser"
 
+
 def get_progress_store():
     """Get the shared progress dict (lives on the app object)."""
     if not hasattr(current_app, "progress_updates"):
         current_app.progress_updates = {"step": 0, "error": ""}
     return current_app.progress_updates
+
 
 @form_bp.route("/", methods=["GET"])
 def index():
@@ -29,6 +33,7 @@ def index():
     progress_updates["step"] = 0
     progress_updates["error"] = ""
     return render_template("form.html")
+
 
 @form_bp.route("/submit", methods=["POST"])
 def submit():
@@ -59,12 +64,14 @@ def submit():
             existing.last_login = datetime.utcnow()
             db.session.commit()
         else:
-            db.session.add(EncryptedCredential(
-                vt_email=vt_email,
-                encrypted_key="TEST_ACCOUNT_NO_REAL_CREDENTIALS",
-                created_at=datetime.utcnow(),
-                last_login=datetime.utcnow(),
-            ))
+            db.session.add(
+                EncryptedCredential(
+                    vt_email=vt_email,
+                    encrypted_key="TEST_ACCOUNT_NO_REAL_CREDENTIALS",
+                    created_at=datetime.utcnow(),
+                    last_login=datetime.utcnow(),
+                )
+            )
             db.session.commit()
 
         # jump straight to "done" so the processing page redirects immediately
@@ -120,6 +127,7 @@ def submit():
     thread.start()
 
     return jsonify({"message": "Login started"})
+
 
 @form_bp.route("/logout", methods=["GET"])
 def logout():

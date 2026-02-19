@@ -1,21 +1,28 @@
 import re
+from datetime import datetime, timedelta
 
 from flask import (
-    Blueprint, render_template, request, redirect, url_for,
-    jsonify, session, Response,
+    Blueprint,
+    Response,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
 )
-from datetime import datetime, timedelta
+
+from kms.kms_manager import KMSManager
 from web.database import db
 from web.models import (
-    EncryptedCredential,
     DEFAULT_CADENCE_DAYS,
-    MIN_CADENCE_DAYS,
     MAX_CADENCE_DAYS,
+    MIN_CADENCE_DAYS,
+    EncryptedCredential,
 )
-from web.services.login_scheduler import scheduler_status
-from web.services.email_notifier import is_configured as smtp_configured
 from web.services import sms_notifier
-from kms.kms_manager import KMSManager
+from web.services.email_notifier import is_configured as smtp_configured
+from web.services.login_scheduler import scheduler_status
 
 dashboard_bp = Blueprint("dashboard", __name__)
 
@@ -47,11 +54,7 @@ def dashboard():
         username, _ = decrypted_credentials.split(",")[1:]
 
     cadence = credential.login_cadence_days or DEFAULT_CADENCE_DAYS
-    next_login = (
-        credential.last_login + timedelta(days=cadence)
-        if credential.last_login
-        else None
-    )
+    next_login = credential.last_login + timedelta(days=cadence) if credential.last_login else None
 
     return render_template(
         "dashboard.html",
@@ -94,9 +97,7 @@ def update_cadence():
         return jsonify({"error": "login_cadence_days must be a number"}), 400
 
     if cadence < MIN_CADENCE_DAYS or cadence > MAX_CADENCE_DAYS:
-        return jsonify({
-            "error": f"Cadence must be between {MIN_CADENCE_DAYS} and {MAX_CADENCE_DAYS} days"
-        }), 400
+        return jsonify({"error": f"Cadence must be between {MIN_CADENCE_DAYS} and {MAX_CADENCE_DAYS} days"}), 400
 
     credential = EncryptedCredential.query.filter_by(vt_email=email).first()
     if not credential:
@@ -107,15 +108,15 @@ def update_cadence():
 
     next_login = None
     if credential.last_login:
-        next_login = (credential.last_login + timedelta(days=cadence)).strftime(
-            "%B %d, %Y, %I:%M %p"
-        )
+        next_login = (credential.last_login + timedelta(days=cadence)).strftime("%B %d, %Y, %I:%M %p")
 
-    return jsonify({
-        "message": f"Login cadence updated to every {cadence} days",
-        "login_cadence_days": cadence,
-        "next_login": next_login,
-    })
+    return jsonify(
+        {
+            "message": f"Login cadence updated to every {cadence} days",
+            "login_cadence_days": cadence,
+            "next_login": next_login,
+        }
+    )
 
 
 @dashboard_bp.route("/update_notification_email", methods=["POST"])
@@ -136,11 +137,13 @@ def update_notification_email():
         # blank or same as VT email — clear the override
         credential.notification_email = None
         db.session.commit()
-        return jsonify({
-            "message": "Notifications will be sent to your VT email",
-            "notification_email": credential.vt_email,
-            "is_custom": False,
-        })
+        return jsonify(
+            {
+                "message": "Notifications will be sent to your VT email",
+                "notification_email": credential.vt_email,
+                "is_custom": False,
+            }
+        )
 
     # basic sanity check
     if "@" not in notif_email or "." not in notif_email.split("@")[-1]:
@@ -149,11 +152,13 @@ def update_notification_email():
     credential.notification_email = notif_email
     db.session.commit()
 
-    return jsonify({
-        "message": f"Notifications will be sent to {notif_email}",
-        "notification_email": notif_email,
-        "is_custom": True,
-    })
+    return jsonify(
+        {
+            "message": f"Notifications will be sent to {notif_email}",
+            "notification_email": notif_email,
+            "is_custom": True,
+        }
+    )
 
 
 @dashboard_bp.route("/update_email_opt_in", methods=["POST"])
@@ -173,10 +178,12 @@ def update_email_opt_in():
     credential.email_opt_in = opt_in
     db.session.commit()
 
-    return jsonify({
-        "message": "Email reminders " + ("enabled" if opt_in else "disabled"),
-        "email_opt_in": opt_in,
-    })
+    return jsonify(
+        {
+            "message": "Email reminders " + ("enabled" if opt_in else "disabled"),
+            "email_opt_in": opt_in,
+        }
+    )
 
 
 @dashboard_bp.route("/download_calendar", methods=["GET"])
@@ -303,21 +310,25 @@ def update_sms_preferences():
         if sms_notifier.is_configured():
             sms_notifier.send_opt_in_confirmation(phone)
 
-        return jsonify({
-            "message": "SMS notifications enabled",
-            "phone_number": phone,
-            "sms_opt_in": True,
-        })
+        return jsonify(
+            {
+                "message": "SMS notifications enabled",
+                "phone_number": phone,
+                "sms_opt_in": True,
+            }
+        )
 
     # opt-out — clear phone number too
     credential.sms_opt_in = False
     credential.phone_number = None
     db.session.commit()
-    return jsonify({
-        "message": "SMS notifications disabled",
-        "phone_number": "",
-        "sms_opt_in": False,
-    })
+    return jsonify(
+        {
+            "message": "SMS notifications disabled",
+            "phone_number": "",
+            "sms_opt_in": False,
+        }
+    )
 
 
 @dashboard_bp.route("/delete_account", methods=["POST"])
@@ -336,6 +347,7 @@ def delete_account():
     session.clear()
 
     import logging
+
     logging.getLogger(__name__).info("Account deleted: %s", email)
 
     return jsonify({"message": "Account deleted", "redirect": "/"})

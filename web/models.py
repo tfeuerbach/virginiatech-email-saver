@@ -1,4 +1,5 @@
 from datetime import datetime
+
 from web.database import db
 
 # Cadence bounds (in days)
@@ -13,9 +14,7 @@ class EncryptedCredential(db.Model):
     encrypted_key = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     last_login = db.Column(db.DateTime, nullable=True)
-    login_cadence_days = db.Column(
-        db.Integer, nullable=False, default=DEFAULT_CADENCE_DAYS, server_default="25"
-    )
+    login_cadence_days = db.Column(db.Integer, nullable=False, default=DEFAULT_CADENCE_DAYS, server_default="25")
     # email reminder opt-in (defaults to on when SMTP is configured)
     email_opt_in = db.Column(db.Boolean, nullable=False, default=True, server_default="true")
     # optional override — if null, notifications go to vt_email

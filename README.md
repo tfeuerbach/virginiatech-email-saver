@@ -242,7 +242,9 @@ If `SMTP_HOST` is blank or missing, the app still works — it just skips email 
 
 You can also download a recurring `.ics` calendar event from the dashboard that adds login reminders directly to your calendar app of choice.
 
-## Testing
+## Testing & Linting
+
+### Tests
 
 ```bash
 # Inside Docker (recommended — has all dependencies):
@@ -253,6 +255,21 @@ pytest
 ```
 
 Covers unit tests (models, KMS encryption, authentication, CSRF, cadence validation) and integration tests (database operations).
+
+### Linting
+
+The project uses [Ruff](https://docs.astral.sh/ruff/) for linting and formatting. Configuration lives in `pyproject.toml`.
+
+```bash
+ruff check .          # lint
+ruff check --fix .    # lint + auto-fix
+ruff format .         # format
+ruff format --check . # check formatting without changes
+```
+
+### CI
+
+A GitHub Actions workflow (`.github/workflows/ci.yml`) runs both lint and test on every push and pull request to `main`/`master`. The test job only runs if linting passes.
 
 ## Planned Improvements
 

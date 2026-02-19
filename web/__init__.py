@@ -1,24 +1,28 @@
+import logging
 import os
 import time
-import logging
+
 from flask import Flask, render_template
 from sqlalchemy import text
+
 from web.csrf import csrf
 from web.database import db
 from web.routes import register_routes
 from web.services.login_scheduler import start_scheduler
+
 from .config import ActiveConfig
-from dotenv import load_dotenv
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
 )
 
+
 def ensure_instance_dir(instance_path):
     """mkdir -p for the instance folder."""
     if not os.path.exists(instance_path):
         os.makedirs(instance_path)
+
 
 def wait_for_db(app, max_retries=15, wait_seconds=3):
     """Block until Postgres is accepting connections.
@@ -36,15 +40,12 @@ def wait_for_db(app, max_retries=15, wait_seconds=3):
                 return
             except Exception:
                 db.session.rollback()
-                db.engine.dispose()          # kill any pooled dead connections
-                logger.info(
-                    "Waiting for database... (%d/%d)", attempt, max_retries
-                )
+                db.engine.dispose()  # kill any pooled dead connections
+                logger.info("Waiting for database... (%d/%d)", attempt, max_retries)
                 time.sleep(wait_seconds)
 
-        raise RuntimeError(
-            f"Could not connect to database after {max_retries} attempts"
-        )
+        raise RuntimeError(f"Could not connect to database after {max_retries} attempts")
+
 
 def _add_column_if_missing(app, table, column, col_type):
     """Poor-man's migration — skips if column already exists. Postgres only."""
@@ -52,20 +53,13 @@ def _add_column_if_missing(app, table, column, col_type):
         return
     try:
         result = db.session.execute(
-            text(
-                "SELECT 1 FROM information_schema.columns "
-                "WHERE table_name = :tbl AND column_name = :col"
-            ),
+            text("SELECT 1 FROM information_schema.columns WHERE table_name = :tbl AND column_name = :col"),
             {"tbl": table, "col": column},
         )
         if result.fetchone() is None:
-            db.session.execute(
-                text(f'ALTER TABLE "{table}" ADD COLUMN "{column}" {col_type}')
-            )
+            db.session.execute(text(f'ALTER TABLE "{table}" ADD COLUMN "{column}" {col_type}'))
             db.session.commit()
-            logging.getLogger(__name__).info(
-                "Migration: added %s.%s (%s)", table, column, col_type
-            )
+            logging.getLogger(__name__).info("Migration: added %s.%s (%s)", table, column, col_type)
     except Exception as e:
         db.session.rollback()
         logging.getLogger(__name__).warning("Migration check failed: %s", e)
@@ -141,7 +135,8 @@ def create_app():
 
     # avoid double-starting the scheduler in Flask's reloader parent process
     is_werkzeug_reloader_parent = (
-        app.debug and os.environ.get("WERKZEUG_RUN_MAIN") is None
+        app.debug
+        and os.environ.get("WERKZEUG_RUN_MAIN") is None
         and "gunicorn" not in (os.environ.get("SERVER_SOFTWARE") or "")
         and "gunicorn" not in __import__("sys").modules
     )

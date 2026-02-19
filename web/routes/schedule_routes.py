@@ -1,4 +1,5 @@
-from flask import Blueprint, jsonify, current_app, session
+from flask import Blueprint, current_app, jsonify, session
+
 from web.services.login_scheduler import (
     process_users_due_for_login,
     scheduler_status,
@@ -15,10 +16,12 @@ def schedule_logins():
 
     try:
         process_users_due_for_login(current_app._get_current_object())
-        return jsonify({
-            "message": "Login check completed.",
-            "status": scheduler_status,
-        })
+        return jsonify(
+            {
+                "message": "Login check completed.",
+                "status": scheduler_status,
+            }
+        )
     except Exception as e:
         return jsonify({"error": f"Failed to run login check: {e}"}), 500
 

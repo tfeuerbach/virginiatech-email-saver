@@ -1,9 +1,9 @@
 from web.database import db
 from web.models import (
-    EncryptedCredential,
     DEFAULT_CADENCE_DAYS,
-    MIN_CADENCE_DAYS,
     MAX_CADENCE_DAYS,
+    MIN_CADENCE_DAYS,
+    EncryptedCredential,
 )
 
 

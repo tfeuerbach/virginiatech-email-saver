@@ -1,8 +1,9 @@
-import smtplib
 import logging
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import smtplib
 from datetime import datetime
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
 from flask import current_app
 
 logger = logging.getLogger(__name__)
@@ -19,12 +20,9 @@ def _get_smtp_config():
         "port": int(current_app.config.get("SMTP_PORT", 587)),
         "user": current_app.config.get("SMTP_USER", ""),
         "password": current_app.config.get("SMTP_PASSWORD", ""),
-        "from_email": current_app.config.get(
-            "SMTP_FROM_EMAIL", "noreply@vtemailsaver.tfeuerbach.dev"
-        ),
+        "from_email": current_app.config.get("SMTP_FROM_EMAIL", "noreply@vtemailsaver.tfeuerbach.dev"),
         "from_name": current_app.config.get("SMTP_FROM_NAME", "VT Email Saver"),
-        "use_tls": current_app.config.get("SMTP_USE_TLS", "true").lower()
-        in ("true", "1", "yes"),
+        "use_tls": current_app.config.get("SMTP_USE_TLS", "true").lower() in ("true", "1", "yes"),
     }
 
 

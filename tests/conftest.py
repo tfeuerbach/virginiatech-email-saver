@@ -1,4 +1,5 @@
 import pytest
+
 from web import create_app
 from web.database import db as _db
 

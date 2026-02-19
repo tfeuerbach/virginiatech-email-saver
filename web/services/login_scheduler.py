@@ -1,6 +1,6 @@
+import logging
 import threading
 import time
-import logging
 from datetime import datetime, timedelta
 
 import schedule
@@ -8,9 +8,8 @@ import schedule
 from kms.kms_manager import KMSManager
 from web.database import db
 from web.models import EncryptedCredential
+from web.services import email_notifier, sms_notifier
 from web.services.google_login import GoogleLogin
-from web.services import email_notifier
-from web.services import sms_notifier
 
 logger = logging.getLogger(__name__)
 
@@ -55,10 +54,7 @@ def send_login_reminders(app):
                 continue
 
             # already notified for this upcoming login?
-            if (
-                user.last_notification_sent is not None
-                and user.last_notification_sent >= window_start
-            ):
+            if user.last_notification_sent is not None and user.last_notification_sent >= window_start:
                 continue
 
             success = email_notifier.send_login_reminder(
@@ -91,9 +87,9 @@ def process_users_due_for_login(app):
             scheduler_status["users_checked"] = len(all_users)
 
             users_due = [
-                u for u in all_users
-                if u.last_login is None
-                or u.last_login <= now - timedelta(days=u.login_cadence_days)
+                u
+                for u in all_users
+                if u.last_login is None or u.last_login <= now - timedelta(days=u.login_cadence_days)
             ]
 
             logger.info(
@@ -148,9 +144,7 @@ def process_users_due_for_login(app):
 
             succeeded = scheduler_status["logins_succeeded"]
             attempted = scheduler_status["logins_attempted"]
-            scheduler_status["last_check_result"] = (
-                f"{succeeded}/{attempted} logins succeeded"
-            )
+            scheduler_status["last_check_result"] = f"{succeeded}/{attempted} logins succeeded"
 
         except Exception as e:
             scheduler_status["last_check_result"] = f"Error: {e}"
