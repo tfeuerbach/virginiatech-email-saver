@@ -6,7 +6,7 @@ from flask import Blueprint, current_app, jsonify, redirect, render_template, re
 
 from kms.kms_manager import KMSManager
 from web.database import db
-from web.models import EncryptedCredential
+from web.models import MAX_CADENCE_DAYS, MIN_CADENCE_DAYS, EncryptedCredential
 from web.services.google_login import GoogleLogin
 
 logger = logging.getLogger(__name__)
@@ -127,6 +127,16 @@ def submit():
     thread.start()
 
     return jsonify({"message": "Login started"})
+
+
+@form_bp.route("/privacy", methods=["GET"])
+def privacy():
+    """Public privacy policy page (no auth required)."""
+    return render_template(
+        "privacy.html",
+        min_cadence=MIN_CADENCE_DAYS,
+        max_cadence=MAX_CADENCE_DAYS,
+    )
 
 
 @form_bp.route("/logout", methods=["GET"])

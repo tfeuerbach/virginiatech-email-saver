@@ -33,7 +33,8 @@ ENV CHROMEDRIVER_PATH="/usr/local/bin/chromedriver"
 
 # Install Python deps first (cache-friendly)
 COPY requirements.txt .
-RUN pip install --no-cache-dir --timeout=120 -r requirements.txt
+ENV PIP_DEFAULT_TIMEOUT=300
+RUN pip install --no-cache-dir --retries=5 -r requirements.txt
 
 COPY . .
 

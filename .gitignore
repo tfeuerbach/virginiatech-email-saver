@@ -261,3 +261,4 @@ cython_debug/
 .pypirc
 
 DEPLOY.md
+.ruff_cache
