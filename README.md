@@ -131,21 +131,26 @@ Your credentials are **never stored in plaintext**. The source code is fully ope
 | Layer | Technology |
 |-------|-----------|
 | Backend | Flask, Gunicorn, SQLAlchemy |
-| Database | PostgreSQL or SQLite (your choice — see [Getting Started](#getting-started)) |
+| Database | PostgreSQL or SQLite |
 | Encryption | AWS KMS via `aws-encryption-sdk` |
 | Notifications | AWS SES (email), Twilio (SMS), iCalendar (.ics) |
 | Browser Automation | Selenium + headless Chrome |
 | Frontend | HTML/CSS/JS, Bootstrap 5, Lottie animations |
 | Infrastructure | Docker Compose, Cloudflare Tunnel |
 
-## Prerequisites
+## Self-Hosting
 
-- Python 3.11+
-- Docker + Docker Compose (for production, or if you prefer PostgreSQL locally)
-- AWS account with a KMS key
-- Google Chrome (installed automatically in Docker; required locally for Selenium)
+Don't want to hand your credentials to a hosted service? Totally fair — that's why this repo exists. You can run the entire app yourself with a minimal setup and host it for yourself or your friends. **No email service, no SMS provider, no Cloudflare account needed.**
 
-## Getting Started
+### What you need
+
+| Requirement | Why |
+|---|---|
+| Python 3.11+ | Runs the app |
+| AWS account with a KMS key | Encrypts your credentials at rest ([free tier](https://aws.amazon.com/kms/pricing/) covers 20,000 requests/month) |
+| Google Chrome | Selenium drives the automated login flow |
+
+That's it. Everything else — email reminders, SMS notifications, Cloudflare Tunnel, PostgreSQL — is completely optional. The app detects which services are configured and disables the rest gracefully.
 
 ### 1. Clone and configure
 
@@ -155,40 +160,21 @@ cd virginiatech-email-saver
 cp .env.example .env
 ```
 
-Open `.env` and fill in your AWS KMS credentials and a `SECRET_KEY`. Everything else is optional.
-
-### 2. Choose your database
-
-The app supports both **SQLite** (zero setup) and **PostgreSQL** (production-ready). Set `DATABASE_URL` in your `.env` to pick one.
-
-#### Option A: SQLite (simplest for local dev)
-
-Leave `DATABASE_URL` unset or comment it out. The app defaults to an SQLite file at `instance/encrypted_credentials.db`, created automatically on first run. No database server needed.
+Open `.env` and fill in your AWS KMS credentials and a `SECRET_KEY`. You can ignore every other variable:
 
 ```env
 FLASK_ENV=development
-# DATABASE_URL=            ← leave blank or remove entirely
+SECRET_KEY=any-random-string-here
+
+AWS_ACCESS_KEY_ID=your-key
+AWS_SECRET_ACCESS_KEY=your-secret
+AWS_REGION=us-east-1
+KMS_KEY_ID=your-kms-key-id
 ```
 
-#### Option B: PostgreSQL (recommended for production / Docker)
+No `DATABASE_URL` needed — the app defaults to a local SQLite file (`instance/encrypted_credentials.db`), created automatically on first run.
 
-Provide a Postgres connection string. If you're using Docker Compose, the included `db` service handles this automatically:
-
-```env
-FLASK_ENV=production
-DATABASE_URL=postgresql://postgres:yourpassword@db:5432/encrypted_credentials
-```
-
-For local Postgres without Docker, point to your own instance:
-
-```env
-FLASK_ENV=development
-DATABASE_URL=postgresql://postgres:yourpassword@localhost:5432/encrypted_credentials
-```
-
-### 3. Run the app
-
-#### Local development (SQLite or local Postgres)
+### 2. Install and run
 
 ```bash
 python3 -m venv .envs/vt_login
@@ -197,10 +183,73 @@ pip install -r requirements.txt
 flask --app web run
 ```
 
-#### Docker Compose (PostgreSQL, Gunicorn, production-ready)
+Open `http://localhost:5000`, add your VT account, and you're done.
+
+### 3. Track your logins
+
+The dashboard has a **Download Calendar** button that gives you a recurring `.ics` file. Import it into Apple Calendar, Google Calendar, Outlook, or any iCalendar-compatible app and you'll get reminders before each scheduled login with built-in alerts at 1 hour and 15 minutes before — no email or SMS service required.
+
+When a login runs, just approve the Duo push on your phone.
+
+### Optional: Email notifications
+
+If you want email reminders the day before each login (plus a welcome email when you first add your account), add SMTP credentials to your `.env`. Works with any SMTP provider — AWS SES, Gmail app passwords, SendGrid, Mailgun, etc.:
+
+```env
+SMTP_HOST=email-smtp.us-east-1.amazonaws.com
+SMTP_PORT=587
+SMTP_USER=your-smtp-username
+SMTP_PASSWORD=your-smtp-password
+SMTP_FROM_EMAIL=noreply@yourdomain.com
+SMTP_FROM_NAME=VT Email Saver
+SMTP_USE_TLS=true
+```
+
+If `SMTP_HOST` is blank or missing, the app skips all email features. The dashboard will show email notifications as "Off" until configured.
+
+### Optional: SMS notifications
+
+For text message reminders ~1 minute before each login, add Twilio credentials:
+
+```env
+TWILIO_ACCOUNT_SID=your-account-sid
+TWILIO_AUTH_TOKEN=your-auth-token
+TWILIO_FROM_NUMBER=+1XXXXXXXXXX
+```
+
+Same deal — leave these blank and SMS is simply disabled.
+
+## Contributing
+
+Contributions are welcome! Here's how to set up a development environment.
+
+### Dev environment setup
+
+The app supports both **SQLite** (zero config) and **PostgreSQL** (production-like). For contributing, either works.
+
+#### Local development (SQLite)
+
+```bash
+git clone https://github.com/tfeuerbach/virginiatech-email-saver.git
+cd virginiatech-email-saver
+cp .env.example .env          # fill in AWS KMS creds + SECRET_KEY
+python3 -m venv .envs/vt_login
+source .envs/vt_login/bin/activate
+pip install -r requirements.txt
+flask --app web run
+```
+
+#### Docker Compose (PostgreSQL + Gunicorn)
 
 ```bash
 docker compose up --build -d
+```
+
+Set `DATABASE_URL` in your `.env` to use Postgres:
+
+```env
+FLASK_ENV=production
+DATABASE_URL=postgresql://postgres:yourpassword@db:5432/encrypted_credentials
 ```
 
 See [DEPLOY.md](DEPLOY.md) for full production deployment instructions including Cloudflare Tunnel setup.
@@ -214,37 +263,7 @@ See [DEPLOY.md](DEPLOY.md) for full production deployment instructions including
 | **HTTPS** | Not required (cookies work over HTTP) | Required (secure cookies, Cloudflare Tunnel) |
 | **Config** | `FLASK_ENV=development` | `FLASK_ENV=production` |
 
-## Usage
-
-1. Open `http://localhost:5000` in your browser.
-2. Enter your Virginia Tech email and password. Credentials are encrypted with AWS KMS and stored securely.
-3. The app automates the login flow (SSO, Google sign-in, Duo push) and redirects you to your dashboard.
-4. On the dashboard you can view login history, adjust your login cadence, download a recurring calendar event, and monitor the background scheduler.
-5. When a login is coming up, you'll get an email reminder (if configured) and/or a calendar alert — just approve the Duo push on your phone.
-
-## Email Notifications
-
-Email reminders are optional. If configured, the app emails you the day before each scheduled login so you know to have your phone ready for the Duo push.
-
-Add these to your `.env` (works with any SMTP provider — AWS SES, Gmail app passwords, SendGrid, etc.):
-
-```
-SMTP_HOST=email-smtp.us-east-1.amazonaws.com
-SMTP_PORT=587
-SMTP_USER=your-smtp-username
-SMTP_PASSWORD=your-smtp-password
-SMTP_FROM_EMAIL=noreply@yourdomain.com
-SMTP_FROM_NAME=VT Email Saver
-SMTP_USE_TLS=true
-```
-
-If `SMTP_HOST` is blank or missing, the app still works — it just skips email reminders. The dashboard will show the feature as "Off" until configured.
-
-You can also download a recurring `.ics` calendar event from the dashboard that adds login reminders directly to your calendar app of choice.
-
-## Testing & Linting
-
-### Tests
+### Testing
 
 ```bash
 # Inside Docker (recommended — has all dependencies):
@@ -271,14 +290,12 @@ ruff format --check . # check formatting without changes
 
 A GitHub Actions workflow (`.github/workflows/ci.yml`) runs both lint and test on every push and pull request to `main`/`master`. The test job only runs if linting passes.
 
-## Planned Improvements
+### Planned Improvements
 
-- **Alembic migrations** — Replace the current `_add_column_if_missing` approach with [Alembic](https://alembic.sqlalchemy.org/) for versioned, reversible schema migrations.
+- **Alembic migrations** — Replace the current `add_column_if_missing` approach with [Alembic](https://alembic.sqlalchemy.org/) for versioned, reversible schema migrations.
 - **Mock AWS in tests** — Add mocked KMS tests (via `unittest.mock`) so encrypt/decrypt logic is covered in CI without real AWS credentials. The current KMS tests are skipped in CI and only run locally with valid credentials.
 
-## Contributing
-
-Contributions are welcome. Feel free to fork the repository, submit pull requests, or suggest improvements.
+Feel free to fork the repository, submit pull requests, or suggest improvements.
 
 ## License
 
