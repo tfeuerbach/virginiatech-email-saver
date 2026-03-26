@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 _client = None
 
 
-def _get_client():
+def get_client():
     """Return a cached Twilio REST client, or None if not configured."""
     global _client
     sid = current_app.config.get("TWILIO_ACCOUNT_SID")
@@ -28,9 +28,9 @@ def is_configured():
     return bool(cfg.get("TWILIO_ACCOUNT_SID") and cfg.get("TWILIO_AUTH_TOKEN") and cfg.get("TWILIO_FROM_NUMBER"))
 
 
-def _send(to_number: str, body: str) -> bool:
+def send(to_number: str, body: str) -> bool:
     """Send a single SMS. Returns True on success, False on failure (never raises)."""
-    client = _get_client()
+    client = get_client()
     if client is None:
         logger.debug("Twilio not configured, skipping SMS for %s", to_number)
         return False
@@ -52,7 +52,7 @@ def _send(to_number: str, body: str) -> bool:
 
 def send_opt_in_confirmation(to_number: str) -> bool:
     """Send the welcome text when a user first opts in."""
-    return _send(
+    return send(
         to_number,
         (
             "VT Email Saver: You're now subscribed to login reminders. "
@@ -65,7 +65,7 @@ def send_opt_in_confirmation(to_number: str) -> bool:
 
 def send_login_sms(to_number: str) -> bool:
     """Fire off the pre-login heads-up text."""
-    return _send(
+    return send(
         to_number,
         (
             "VT Email Saver: Your scheduled VT Gmail login is about to run. "

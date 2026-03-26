@@ -47,7 +47,7 @@ def wait_for_db(app, max_retries=15, wait_seconds=3):
         raise RuntimeError(f"Could not connect to database after {max_retries} attempts")
 
 
-def _add_column_if_missing(app, table, column, col_type):
+def add_column_if_missing(app, table, column, col_type):
     """Poor-man's migration — skips if column already exists. Postgres only."""
     if not app.config["SQLALCHEMY_DATABASE_URI"].startswith("postgresql"):
         return
@@ -90,11 +90,12 @@ def create_app():
         db.create_all()
 
         # db.create_all() won't touch existing tables — bolt on new columns here
-        _add_column_if_missing(app, "encrypted_credential", "email_opt_in", "BOOLEAN DEFAULT TRUE")
-        _add_column_if_missing(app, "encrypted_credential", "notification_email", "VARCHAR(120)")
-        _add_column_if_missing(app, "encrypted_credential", "last_notification_sent", "TIMESTAMP")
-        _add_column_if_missing(app, "encrypted_credential", "phone_number", "VARCHAR(20)")
-        _add_column_if_missing(app, "encrypted_credential", "sms_opt_in", "BOOLEAN DEFAULT FALSE")
+        add_column_if_missing(app, "encrypted_credential", "email_opt_in", "BOOLEAN DEFAULT TRUE")
+        add_column_if_missing(app, "encrypted_credential", "notification_email", "VARCHAR(120)")
+        add_column_if_missing(app, "encrypted_credential", "last_notification_sent", "TIMESTAMP")
+        add_column_if_missing(app, "encrypted_credential", "phone_number", "VARCHAR(20)")
+        add_column_if_missing(app, "encrypted_credential", "sms_opt_in", "BOOLEAN DEFAULT FALSE")
+        add_column_if_missing(app, "encrypted_credential", "welcome_email_sent", "BOOLEAN DEFAULT FALSE")
 
     register_routes(app)
 

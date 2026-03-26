@@ -151,25 +151,25 @@ def process_users_due_for_login(app):
             logger.error("Scheduler check failed: %s", e)
 
 
-def _daily_check(app):
+def daily_check(app):
     """Combined daily task: send reminders first, then do logins."""
     send_login_reminders(app)
     process_users_due_for_login(app)
 
 
-def _scheduler_loop(app, interval_hours=24):
+def scheduler_loop(app, interval_hours=24):
     """Runs forever in a background thread, checking on a fixed interval."""
-    schedule.every(interval_hours).hours.do(_daily_check, app=app)
+    schedule.every(interval_hours).hours.do(daily_check, app=app)
 
-    def _update_next():
+    def update_next():
         next_run = schedule.next_run()
         scheduler_status["next_check"] = next_run.isoformat() if next_run else None
 
-    _update_next()
+    update_next()
 
     while True:
         schedule.run_pending()
-        _update_next()
+        update_next()
         time.sleep(60)
 
 
@@ -187,7 +187,7 @@ def start_scheduler(app, interval_hours=24):
     )
 
     thread = threading.Thread(
-        target=_scheduler_loop,
+        target=scheduler_loop,
         args=(app, interval_hours),
         daemon=True,
         name="login-scheduler",

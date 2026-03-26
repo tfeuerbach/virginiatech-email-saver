@@ -267,7 +267,7 @@ def download_calendar():
 _E164_RE = re.compile(r"^\+1\d{10}$")
 
 
-def _normalise_phone(raw: str) -> str | None:
+def normalise_phone(raw: str) -> str | None:
     """Normalise a US/CA phone number to E.164 (+1XXXXXXXXXX).
 
     Returns None if the input is blank or cannot be parsed.
@@ -299,7 +299,7 @@ def update_sms_preferences():
         return jsonify({"error": "User not found"}), 404
 
     if opt_in:
-        phone = _normalise_phone(raw_phone)
+        phone = normalise_phone(raw_phone)
         if phone is None:
             return jsonify({"error": "Please enter a valid 10-digit US phone number"}), 400
         credential.phone_number = phone

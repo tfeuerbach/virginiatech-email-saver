@@ -36,6 +36,9 @@ class Config:
     TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "")
     TWILIO_FROM_NUMBER = os.getenv("TWILIO_FROM_NUMBER", "")
 
+    # Public base URL (used for links in emails)
+    BASE_URL = os.getenv("BASE_URL", "https://vtemailsaver.tfeuerbach.dev")
+
 
 class DevelopmentConfig(Config):
     """Local dev — SQLite fallback, cookies don't require HTTPS."""

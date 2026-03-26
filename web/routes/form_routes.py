@@ -7,6 +7,8 @@ from flask import Blueprint, current_app, jsonify, redirect, render_template, re
 from kms.kms_manager import KMSManager
 from web.database import db
 from web.models import MAX_CADENCE_DAYS, MIN_CADENCE_DAYS, EncryptedCredential
+from web.services.email_notifier import is_configured as smtp_configured
+from web.services.email_notifier import send_welcome_email
 from web.services.google_login import GoogleLogin
 
 logger = logging.getLogger(__name__)
@@ -60,6 +62,7 @@ def submit():
         session["authenticated_email"] = vt_email
 
         existing = EncryptedCredential.query.filter_by(vt_email=vt_email).first()
+        is_new_account = existing is None
         if existing:
             existing.last_login = datetime.utcnow()
             db.session.commit()
@@ -73,6 +76,12 @@ def submit():
                 )
             )
             db.session.commit()
+
+        if is_new_account and smtp_configured():
+            cred = EncryptedCredential.query.filter_by(vt_email=vt_email).first()
+            if send_welcome_email(vt_email, cred.login_cadence_days):
+                cred.welcome_email_sent = True
+                db.session.commit()
 
         # jump straight to "done" so the processing page redirects immediately
         progress_updates["step"] = 4
@@ -102,6 +111,7 @@ def submit():
                     encrypted = kms_manager.encrypt(plaintext)
 
                     existing = EncryptedCredential.query.filter_by(vt_email=vt_email).first()
+                    is_new_account = existing is None
                     if existing:
                         existing.encrypted_key = encrypted
                         existing.last_login = datetime.utcnow()
@@ -115,6 +125,12 @@ def submit():
                         )
                         db.session.add(new_cred)
                         db.session.commit()
+
+                    if is_new_account and smtp_configured():
+                        cred = EncryptedCredential.query.filter_by(vt_email=vt_email).first()
+                        if send_welcome_email(vt_email, cred.login_cadence_days):
+                            cred.welcome_email_sent = True
+                            db.session.commit()
                 else:
                     progress_updates["step"] = 5
                     progress_updates["error"] = login_result["error"]

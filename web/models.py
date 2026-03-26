@@ -24,6 +24,8 @@ class EncryptedCredential(db.Model):
     # SMS notification opt-in
     phone_number = db.Column(db.String(20), nullable=True)
     sms_opt_in = db.Column(db.Boolean, nullable=False, default=False, server_default="false")
+    # one-time welcome email tracking
+    welcome_email_sent = db.Column(db.Boolean, nullable=False, default=False, server_default="false")
 
     @property
     def effective_notification_email(self):

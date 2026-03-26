@@ -3,13 +3,14 @@ import smtplib
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from urllib.parse import quote
 
 from flask import current_app, render_template
 
 logger = logging.getLogger(__name__)
 
 
-def _get_smtp_config():
+def get_smtp_config():
     """Pull SMTP settings from app config. Returns None if not configured."""
     host = current_app.config.get("SMTP_HOST")
     if not host:
@@ -31,23 +32,12 @@ def is_configured():
     return bool(current_app.config.get("SMTP_HOST"))
 
 
-def send_login_reminder(to_email, next_login_utc: datetime, cadence_days: int):
-    """
-    Send a friendly "your login is tomorrow" email.
-    Returns True on success, False on failure (never raises).
-    """
-    config = _get_smtp_config()
+def _send_email(to_email, subject, html, plain):
+    """Low-level SMTP send. Returns True on success, False on failure (never raises)."""
+    config = get_smtp_config()
     if config is None:
-        logger.debug("SMTP not configured, skipping reminder for %s", to_email)
+        logger.debug("SMTP not configured, skipping email to %s", to_email)
         return False
-
-    next_str = next_login_utc.strftime("%A, %B %d, %Y at %I:%M %p UTC")
-
-    subject = "VT Email Saver — Login Tomorrow, Have Your Phone Ready"
-
-    template_vars = {"next_login": next_str, "cadence_days": cadence_days}
-    html = render_template("emails/login_reminder.html", **template_vars)
-    plain = render_template("emails/login_reminder.txt", **template_vars)
 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
@@ -71,9 +61,51 @@ def send_login_reminder(to_email, next_login_utc: datetime, cadence_days: int):
 
         server.sendmail(config["from_email"], [to_email], msg.as_string())
         server.quit()
-        logger.info("Login reminder sent to %s", to_email)
         return True
 
     except Exception as e:
-        logger.error("Failed to send reminder to %s: %s", to_email, e)
+        logger.error("Failed to send email to %s: %s", to_email, e)
         return False
+
+
+def send_welcome_email(to_email, cadence_days: int):
+    """
+    Send a one-time welcome email after first account creation.
+    Returns True on success, False on failure (never raises).
+    """
+    base = current_app.config.get("BASE_URL", "https://vtemailsaver.tfeuerbach.dev").rstrip("/")
+    dashboard_url = f"{base}/dashboard?user={quote(to_email)}"
+
+    template_vars = {
+        "vt_email": to_email,
+        "cadence_days": cadence_days,
+        "dashboard_url": dashboard_url,
+    }
+    html = render_template("emails/welcome.html", **template_vars)
+    plain = render_template("emails/welcome.txt", **template_vars)
+
+    subject = "Welcome to VT Email Saver — You're All Set"
+
+    ok = _send_email(to_email, subject, html, plain)
+    if ok:
+        logger.info("Welcome email sent to %s", to_email)
+    return ok
+
+
+def send_login_reminder(to_email, next_login_utc: datetime, cadence_days: int):
+    """
+    Send a friendly "your login is tomorrow" email.
+    Returns True on success, False on failure (never raises).
+    """
+    next_str = next_login_utc.strftime("%A, %B %d, %Y at %I:%M %p UTC")
+
+    subject = "VT Email Saver — Login Tomorrow, Have Your Phone Ready"
+
+    template_vars = {"next_login": next_str, "cadence_days": cadence_days}
+    html = render_template("emails/login_reminder.html", **template_vars)
+    plain = render_template("emails/login_reminder.txt", **template_vars)
+
+    ok = _send_email(to_email, subject, html, plain)
+    if ok:
+        logger.info("Login reminder sent to %s", to_email)
+    return ok
