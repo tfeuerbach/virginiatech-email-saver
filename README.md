@@ -146,9 +146,8 @@ Don't want to hand your credentials to a hosted service? Totally fair — that's
 
 | Requirement | Why |
 |---|---|
-| Python 3.11+ | Runs the app |
 | AWS account with a KMS key | Encrypts your credentials at rest ([free tier](https://aws.amazon.com/kms/pricing/) covers 20,000 requests/month) |
-| Google Chrome | Selenium drives the automated login flow |
+| Docker **or** Python 3.11+ & Google Chrome | Runs the app (Docker is easiest — it bundles Chrome for you) |
 
 That's it. Everything else — email reminders, SMS notifications, Cloudflare Tunnel, PostgreSQL — is completely optional. The app detects which services are configured and disables the rest gracefully.
 
@@ -172,9 +171,21 @@ AWS_REGION=us-east-1
 KMS_KEY_ID=your-kms-key-id
 ```
 
-No `DATABASE_URL` needed — the app defaults to a local SQLite file (`instance/encrypted_credentials.db`), created automatically on first run.
+### 2. Run the app
 
-### 2. Install and run
+#### Option A: Docker Compose (recommended)
+
+The container bundles Python, Chrome, ChromeDriver, and all dependencies — nothing else to install.
+
+```bash
+docker compose up --build -d
+```
+
+The app starts on `http://localhost:5000` with PostgreSQL and Gunicorn. To bring it down: `docker compose down`. Your data persists in a Docker volume.
+
+#### Option B: Run locally without Docker
+
+If you'd rather skip Docker, you'll need Python 3.11+ and Google Chrome installed on your machine.
 
 ```bash
 python3 -m venv .envs/vt_login
@@ -183,7 +194,9 @@ pip install -r requirements.txt
 flask --app web run
 ```
 
-Open `http://localhost:5000`, add your VT account, and you're done.
+No `DATABASE_URL` needed — the app defaults to a local SQLite file (`instance/encrypted_credentials.db`), created automatically on first run.
+
+Either way, open `http://localhost:5000`, add your VT account, and you're done.
 
 ### 3. Track your logins
 
