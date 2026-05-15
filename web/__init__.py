@@ -142,6 +142,6 @@ def create_app():
         and "gunicorn" not in __import__("sys").modules
     )
     if not is_werkzeug_reloader_parent:
-        start_scheduler(app, interval_hours=24)
+        start_scheduler(app)
 
     return app

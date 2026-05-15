@@ -3,8 +3,6 @@ import threading
 import time
 from datetime import datetime, timedelta
 
-import schedule
-
 from kms.kms_manager import KMSManager
 from web.database import db
 from web.models import EncryptedCredential
@@ -13,7 +11,6 @@ from web.services.google_login import GoogleLogin
 
 logger = logging.getLogger(__name__)
 
-# Shared dict so the /scheduler_status endpoint can peek at what's going on
 scheduler_status = {
     "running": False,
     "last_check": None,
@@ -25,6 +22,13 @@ scheduler_status = {
     "sms_sent": 0,
     "next_check": None,
 }
+
+
+def _next_login_time(user):
+    """Compute when a user's next login should happen based on DB state."""
+    if user.last_login is None:
+        return None
+    return user.last_login + timedelta(days=user.login_cadence_days)
 
 
 def send_login_reminders(app):
@@ -42,18 +46,15 @@ def send_login_reminders(app):
             if not user.email_opt_in:
                 continue
 
-            if user.last_login is None:
-                # first-timers haven't had a login yet, nothing to remind about
+            next_login = _next_login_time(user)
+            if next_login is None:
                 continue
 
-            next_login = user.last_login + timedelta(days=user.login_cadence_days)
             window_start = next_login - timedelta(days=1)
 
-            # is next login 24-48h from now?
             if not (window_start <= now < next_login):
                 continue
 
-            # already notified for this upcoming login?
             if user.last_notification_sent is not None and user.last_notification_sent >= window_start:
                 continue
 
@@ -72,9 +73,54 @@ def send_login_reminders(app):
             logger.info("Sent %d login reminder(s)", sent)
 
 
-def process_users_due_for_login(app):
-    """Look at every user's cadence and log in anyone who's overdue."""
+def _login_single_user(app, user_id):
+    """Run one user's login flow in its own thread (SMS → wait → Selenium)."""
     kms_manager = KMSManager()
+    with app.app_context():
+        user = db.session.get(EncryptedCredential, user_id)
+        if not user:
+            return
+
+        email = user.vt_email
+        try:
+            decrypted = kms_manager.decrypt(user.encrypted_key)
+            _, username, password = decrypted.split(",")
+
+            if user.sms_opt_in and user.phone_number:
+                if sms_notifier.is_configured():
+                    sms_notifier.send_login_sms(user.phone_number)
+                    logger.info("SMS sent to %s, waiting 60s before Duo push", user.phone_number)
+                    time.sleep(60)
+                else:
+                    logger.debug("Twilio not configured, skipping SMS for %s", email)
+
+            logger.info("Attempting login for %s (cadence=%dd)", email, user.login_cadence_days)
+            login_bot = GoogleLogin()
+            result = login_bot.login(email, username, password)
+
+            if result["success"]:
+                user.last_login = datetime.utcnow()
+                db.session.commit()
+                scheduler_status["logins_succeeded"] += 1
+                logger.info("Login succeeded for %s", email)
+            else:
+                logger.warning("Login failed for %s: %s", email, result.get("error", "Unknown"))
+
+        except Exception as e:
+            logger.error("Error processing %s: %s", email, e)
+
+
+def _hourly_check(app):
+    """Scan all users at the top of each hour.
+
+    - Overdue (next_login in the past): login immediately
+    - Due within 60 min: start a timer that fires at the exact minute
+    - Due later: do nothing, we'll catch them on a future check
+
+    All timers run concurrently; the function blocks until every login
+    in this window has finished before returning to the sleep loop.
+    """
+    send_login_reminders(app)
 
     with app.app_context():
         now = datetime.utcnow()
@@ -82,113 +128,96 @@ def process_users_due_for_login(app):
         scheduler_status["logins_attempted"] = 0
         scheduler_status["logins_succeeded"] = 0
 
-        try:
-            all_users = EncryptedCredential.query.all()
-            scheduler_status["users_checked"] = len(all_users)
+        all_users = EncryptedCredential.query.all()
+        scheduler_status["users_checked"] = len(all_users)
 
-            users_due = [
-                u
-                for u in all_users
-                if u.last_login is None or u.last_login <= now - timedelta(days=u.login_cadence_days)
-            ]
+        threads = []
+        overdue_count = 0
+        scheduled_count = 0
 
-            logger.info(
-                "Scheduler check: %d total users, %d due for login",
-                len(all_users),
-                len(users_due),
-            )
+        for user in all_users:
+            next_login = _next_login_time(user)
+            if next_login is None:
+                continue
 
-            if not users_due:
-                scheduler_status["last_check_result"] = "No users due for login"
-                return
-
-            for user in users_due:
+            if next_login <= now:
+                # overdue — fire immediately
                 scheduler_status["logins_attempted"] += 1
-                try:
-                    decrypted = kms_manager.decrypt(user.encrypted_key)
-                    email, username, password = decrypted.split(",")
+                overdue_count += 1
+                t = threading.Thread(
+                    target=_login_single_user,
+                    args=(app, user.id),
+                    name=f"login-{user.vt_email}",
+                )
+                t.start()
+                threads.append(t)
 
-                    # text opted-in users ~1 min before we trigger the Duo push
-                    if user.sms_opt_in and user.phone_number:
-                        if sms_notifier.is_configured():
-                            sms_notifier.send_login_sms(user.phone_number)
-                            logger.info(
-                                "SMS heads-up sent to %s, waiting 60s before login",
-                                user.phone_number,
-                            )
-                            time.sleep(60)
-                        else:
-                            logger.debug("Twilio not configured, skipping SMS for %s", email)
+            elif next_login <= now + timedelta(hours=1):
+                # due within the hour — set a countdown timer
+                delay = (next_login - now).total_seconds()
+                scheduler_status["logins_attempted"] += 1
+                scheduled_count += 1
+                logger.info(
+                    "Scheduling %s in %.0f min (at %s UTC)",
+                    user.vt_email,
+                    delay / 60,
+                    next_login.strftime("%H:%M"),
+                )
+                t = threading.Timer(delay, _login_single_user, args=[app, user.id])
+                t.name = f"login-timer-{user.vt_email}"
+                t.start()
+                threads.append(t)
 
-                    logger.info(
-                        "Attempting scheduled login for %s (cadence=%dd)",
-                        email,
-                        user.login_cadence_days,
-                    )
-                    login_bot = GoogleLogin()
-                    result = login_bot.login(email, username, password)
+        total = overdue_count + scheduled_count
+        if total == 0:
+            scheduler_status["last_check_result"] = "No users due for login"
+            logger.info("Hourly check: %d users, none due this window", len(all_users))
+            return
 
-                    if result["success"]:
-                        user.last_login = datetime.utcnow()
-                        db.session.commit()
-                        scheduler_status["logins_succeeded"] += 1
-                        logger.info("Scheduled login succeeded for %s", email)
-                    else:
-                        logger.warning(
-                            "Scheduled login failed for %s: %s",
-                            email,
-                            result.get("error", "Unknown error"),
-                        )
-                except Exception as e:
-                    logger.error("Error processing user %s: %s", user.vt_email, e)
+        logger.info(
+            "Hourly check: %d users — %d overdue (now), %d scheduled (this hour)",
+            len(all_users),
+            overdue_count,
+            scheduled_count,
+        )
 
-            succeeded = scheduler_status["logins_succeeded"]
-            attempted = scheduler_status["logins_attempted"]
-            scheduler_status["last_check_result"] = f"{succeeded}/{attempted} logins succeeded"
+        for t in threads:
+            t.join()
 
-        except Exception as e:
-            scheduler_status["last_check_result"] = f"Error: {e}"
-            logger.error("Scheduler check failed: %s", e)
-
-
-def daily_check(app):
-    """Combined daily task: send reminders first, then do logins."""
-    send_login_reminders(app)
-    process_users_due_for_login(app)
+        succeeded = scheduler_status["logins_succeeded"]
+        attempted = scheduler_status["logins_attempted"]
+        scheduler_status["last_check_result"] = f"{succeeded}/{attempted} logins succeeded"
 
 
-def scheduler_loop(app, interval_hours=24):
-    """Runs forever in a background thread, checking on a fixed interval."""
-    schedule.every(interval_hours).hours.do(daily_check, app=app)
+def scheduler_loop(app):
+    """Run forever: check on startup, then again at the top of every hour."""
 
-    def update_next():
-        next_run = schedule.next_run()
-        scheduler_status["next_check"] = next_run.isoformat() if next_run else None
-
-    update_next()
+    logger.info("Running startup check for overdue logins")
+    _hourly_check(app)
 
     while True:
-        schedule.run_pending()
-        update_next()
-        time.sleep(60)
+        now = datetime.utcnow()
+        next_hour = (now + timedelta(hours=1)).replace(minute=0, second=0, microsecond=0)
+        wait = (next_hour - now).total_seconds()
+        scheduler_status["next_check"] = next_hour.isoformat()
+        logger.info("Next check at %s UTC (in %.0f min)", next_hour.strftime("%H:%M"), wait / 60)
+        time.sleep(wait)
+
+        _hourly_check(app)
 
 
-def start_scheduler(app, interval_hours=24):
+def start_scheduler(app):
     """Kick off the scheduler daemon thread. Called once from create_app()."""
     if scheduler_status["running"]:
         logger.warning("Scheduler already running, skipping duplicate start")
         return
 
     scheduler_status["running"] = True
-    logger.info(
-        "Starting login scheduler (interval=%dh, first run in %dh)",
-        interval_hours,
-        interval_hours,
-    )
+    logger.info("Starting login scheduler (hourly checks, aligned to clock)")
 
     thread = threading.Thread(
         target=scheduler_loop,
-        args=(app, interval_hours),
+        args=(app,),
         daemon=True,
         name="login-scheduler",
     )
