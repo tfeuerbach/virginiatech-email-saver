@@ -24,7 +24,6 @@ def login_user(client, email="test@vt.edu"):
         sess["authenticated_email"] = email
 
 
-
 def test_update_timezone_rejects_without_session(client):
     resp = client.post("/update_timezone", json={"timezone": "UTC"})
     assert resp.status_code == 401
@@ -68,7 +67,6 @@ def test_update_timezone_user_not_found(client):
     login_user(client, "ghost@vt.edu")
     resp = client.post("/update_timezone", json={"timezone": "UTC"})
     assert resp.status_code == 404
-
 
 
 def test_preferred_time_rejects_without_session(client):
@@ -140,7 +138,6 @@ def test_preferred_time_user_not_found(client):
     assert resp.status_code == 404
 
 
-
 def test_notification_email_rejects_without_session(client):
     resp = client.post("/update_notification_email", json={"notification_email": "a@b.com"})
     assert resp.status_code == 401
@@ -187,7 +184,6 @@ def test_notification_email_user_not_found(client):
     assert resp.status_code == 404
 
 
-
 def test_email_opt_in_rejects_without_session(client):
     resp = client.post("/update_email_opt_in", json={"email_opt_in": True})
     assert resp.status_code == 401
@@ -213,7 +209,6 @@ def test_email_opt_in_user_not_found(client):
     login_user(client, "ghost@vt.edu")
     resp = client.post("/update_email_opt_in", json={"email_opt_in": True})
     assert resp.status_code == 404
-
 
 
 def test_sms_rejects_without_session(client):
@@ -267,7 +262,6 @@ def test_sms_user_not_found(client):
     assert resp.status_code == 404
 
 
-
 def test_calendar_redirects_without_session(client):
     resp = client.get("/download_calendar")
     assert resp.status_code == 302
@@ -302,7 +296,6 @@ def test_calendar_uid_contains_email(client):
     login_user(client)
     resp = client.get("/download_calendar")
     assert b"vtemailsaver-test-at-vt.edu" in resp.data
-
 
 
 def test_delete_account_rejects_without_session(client):

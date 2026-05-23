@@ -28,7 +28,6 @@ def login_user(client, email="test@vt.edu"):
         sess["authenticated_email"] = email
 
 
-
 def test_index_loads(client):
     resp = client.get("/")
     assert resp.status_code == 200
@@ -64,7 +63,6 @@ def test_schedule_logins_rejects_without_session(client):
     assert resp.status_code == 401
 
 
-
 @mock_decrypt
 def test_dashboard_loads_with_session(mock_dec, client):
     seed_user()
@@ -93,7 +91,6 @@ def test_get_progress_works_with_session(client):
     assert "step" in resp.get_json()
 
 
-
 @mock_decrypt
 def test_logout_clears_session(mock_dec, client):
     seed_user()
@@ -101,7 +98,6 @@ def test_logout_clears_session(mock_dec, client):
     assert client.get("/dashboard").status_code == 200
     client.get("/logout")
     assert client.get("/dashboard").status_code == 302
-
 
 
 def test_update_cadence_valid(client):
@@ -139,7 +135,6 @@ def test_update_cadence_missing_field(client):
     login_user(client)
     resp = client.post("/update_cadence", json={})
     assert resp.status_code == 400
-
 
 
 @patch("web.routes.schedule_routes.hourly_check")

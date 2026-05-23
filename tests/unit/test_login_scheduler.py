@@ -18,7 +18,6 @@ def make_user(**overrides):
     return user
 
 
-
 def test_no_last_login_returns_none():
     user = make_user(last_login=None)
     assert next_login_time(user) is None
@@ -136,7 +135,6 @@ def test_timezone_without_preferred_hour_uses_plain_anchor():
     )
     result = next_login_time(user)
     assert result == datetime(2026, 1, 11, 12, 0, 0)
-
 
 
 def test_reminders_skip_when_smtp_not_configured(app):
