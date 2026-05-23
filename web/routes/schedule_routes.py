@@ -1,7 +1,7 @@
 from flask import Blueprint, current_app, jsonify, session
 
 from web.models import SchedulerState
-from web.services.login_scheduler import _hourly_check
+from web.services.login_scheduler import hourly_check
 
 schedule_bp = Blueprint("schedule", __name__)
 
@@ -13,11 +13,13 @@ def schedule_logins():
         return jsonify({"error": "Not authenticated"}), 401
 
     try:
-        _hourly_check(current_app._get_current_object())
-        return jsonify({
-            "message": "Login check completed.",
-            "status": SchedulerState.get().to_dict(),
-        })
+        hourly_check(current_app._get_current_object())
+        return jsonify(
+            {
+                "message": "Login check completed.",
+                "status": SchedulerState.get().to_dict(),
+            }
+        )
     except Exception as e:
         return jsonify({"error": f"Failed to run login check: {e}"}), 500
 

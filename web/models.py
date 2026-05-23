@@ -44,7 +44,7 @@ class SchedulerState(db.Model):
 
     @classmethod
     def get(cls):
-        state = cls.query.get(1)
+        state = db.session.get(cls, 1)
         if state is None:
             state = cls(id=1)
             db.session.add(state)

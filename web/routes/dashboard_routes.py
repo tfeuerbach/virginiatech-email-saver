@@ -24,7 +24,7 @@ from web.models import (
 )
 from web.services import sms_notifier
 from web.services.email_notifier import is_configured as smtp_configured
-from web.services.login_scheduler import _next_login_time
+from web.services.login_scheduler import next_login_time
 
 TIMEZONE_CHOICES = [
     ("America/New_York", "Eastern"),
@@ -38,8 +38,9 @@ TIMEZONE_CHOICES = [
 TIMEZONE_LABELS = {k: v for k, v in TIMEZONE_CHOICES}
 
 
-def _tz_display(iana_name):
+def tz_display(iana_name):
     return TIMEZONE_LABELS.get(iana_name, iana_name)
+
 
 dashboard_bp = Blueprint("dashboard", __name__)
 
@@ -68,7 +69,7 @@ def dashboard():
         username, _ = decrypted_credentials.split(",")[1:]
 
     cadence = credential.login_cadence_days or DEFAULT_CADENCE_DAYS
-    next_login = _next_login_time(credential)
+    next_login = next_login_time(credential)
     sched = SchedulerState.get()
 
     return render_template(
@@ -92,7 +93,7 @@ def dashboard():
         phone_number=credential.phone_number or "",
         preferred_hour=credential.preferred_hour,
         timezone=credential.timezone,
-        timezone_label=_tz_display(credential.timezone) if credential.timezone else None,
+        timezone_label=tz_display(credential.timezone) if credential.timezone else None,
         timezone_choices=TIMEZONE_CHOICES,
     )
 
@@ -124,7 +125,7 @@ def update_cadence():
     credential.login_cadence_days = cadence
     db.session.commit()
 
-    next_login = _next_login_time(credential)
+    next_login = next_login_time(credential)
     next_login_str = next_login.strftime("%B %d, %Y, %I:%M %p") if next_login else None
 
     return jsonify(
@@ -160,13 +161,15 @@ def update_timezone():
     credential.timezone = tz_name
     db.session.commit()
 
-    next_login = _next_login_time(credential)
-    return jsonify({
-        "message": f"Timezone set to {_tz_display(tz_name)}",
-        "timezone": tz_name,
-        "timezone_label": _tz_display(tz_name),
-        "next_login": next_login.strftime("%B %d, %Y, %I:%M %p") if next_login else None,
-    })
+    next_login = next_login_time(credential)
+    return jsonify(
+        {
+            "message": f"Timezone set to {tz_display(tz_name)}",
+            "timezone": tz_name,
+            "timezone_label": tz_display(tz_name),
+            "next_login": next_login.strftime("%B %d, %Y, %I:%M %p") if next_login else None,
+        }
+    )
 
 
 @dashboard_bp.route("/update_preferred_time", methods=["POST"])
@@ -185,12 +188,14 @@ def update_preferred_time():
     if raw_hour is None or raw_hour == "":
         credential.preferred_hour = None
         db.session.commit()
-        next_login = _next_login_time(credential)
-        return jsonify({
-            "message": "Preferred time cleared — logins will use UTC timing",
-            "preferred_hour": None,
-            "next_login": next_login.strftime("%B %d, %Y, %I:%M %p") if next_login else None,
-        })
+        next_login = next_login_time(credential)
+        return jsonify(
+            {
+                "message": "Preferred time cleared — logins will use UTC timing",
+                "preferred_hour": None,
+                "next_login": next_login.strftime("%B %d, %Y, %I:%M %p") if next_login else None,
+            }
+        )
 
     try:
         hour = int(raw_hour)
@@ -206,15 +211,17 @@ def update_preferred_time():
     credential.preferred_hour = hour
     db.session.commit()
 
-    next_login = _next_login_time(credential)
-    tz_label = _tz_display(credential.timezone)
+    next_login = next_login_time(credential)
+    tz_label = tz_display(credential.timezone)
     hour_12 = datetime(2000, 1, 1, hour).strftime("%I:%M %p")
 
-    return jsonify({
-        "message": f"Logins scheduled at {hour_12} {tz_label}",
-        "preferred_hour": hour,
-        "next_login": next_login.strftime("%B %d, %Y, %I:%M %p") if next_login else None,
-    })
+    return jsonify(
+        {
+            "message": f"Logins scheduled at {hour_12} {tz_label}",
+            "preferred_hour": hour,
+            "next_login": next_login.strftime("%B %d, %Y, %I:%M %p") if next_login else None,
+        }
+    )
 
 
 @dashboard_bp.route("/update_notification_email", methods=["POST"])
@@ -231,7 +238,7 @@ def update_notification_email():
         return jsonify({"error": "User not found"}), 404
 
     if not notif_email or notif_email == credential.vt_email:
-    credential.notification_email = None
+        credential.notification_email = None
         db.session.commit()
         return jsonify(
             {
@@ -346,7 +353,7 @@ def download_calendar():
     )
 
 
-_E164_RE = re.compile(r"^\+1\d{10}$")
+E164_RE = re.compile(r"^\+1\d{10}$")
 
 
 def normalise_phone(raw: str) -> str | None:

@@ -17,7 +17,7 @@ _succeeded_lock = threading.Lock()
 _succeeded_count = 0
 
 
-def _next_login_time(user):
+def next_login_time(user):
     """Next login as naive UTC, pinned to preferred_hour when set."""
     if user.last_login is None:
         return None
@@ -28,7 +28,10 @@ def _next_login_time(user):
         tz = ZoneInfo(user.timezone)
         anchor_local = anchor.replace(tzinfo=ZoneInfo("UTC")).astimezone(tz)
         preferred = anchor_local.replace(
-            hour=user.preferred_hour, minute=0, second=0, microsecond=0,
+            hour=user.preferred_hour,
+            minute=0,
+            second=0,
+            microsecond=0,
         )
         if preferred < anchor.replace(tzinfo=ZoneInfo("UTC")).astimezone(tz):
             preferred += timedelta(days=1)
@@ -44,7 +47,7 @@ def _next_login_time(user):
     return anchor
 
 
-def _save_state(app, **fields):
+def save_state(app, **fields):
     with app.app_context():
         state = SchedulerState.get()
         for k, v in fields.items():
@@ -67,7 +70,7 @@ def send_login_reminders(app):
             if not user.email_opt_in:
                 continue
 
-            next_login = _next_login_time(user)
+            next_login = next_login_time(user)
             if next_login is None:
                 continue
 
@@ -89,12 +92,12 @@ def send_login_reminders(app):
                 db.session.commit()
                 sent += 1
 
-        _save_state(app, notifications_sent=sent)
+        save_state(app, notifications_sent=sent)
         if sent:
             logger.info("Sent %d login reminder(s)", sent)
 
 
-def _login_single_user(app, user_id):
+def login_single_user(app, user_id):
     """SMS heads-up, then Selenium login for one user."""
     global _succeeded_count
     kms_manager = KMSManager()
@@ -133,7 +136,7 @@ def _login_single_user(app, user_id):
             logger.error("Error processing %s: %s", email, e)
 
 
-def _hourly_check(app):
+def hourly_check(app):
     """Scan users, fire overdue logins, schedule ones due within the hour."""
     global _succeeded_count
 
@@ -143,11 +146,7 @@ def _hourly_check(app):
         now = datetime.utcnow()
         all_users = EncryptedCredential.query.all()
 
-        _save_state(app,
-                    last_check=now,
-                    users_checked=len(all_users),
-                    logins_attempted=0,
-                    logins_succeeded=0)
+        save_state(app, last_check=now, users_checked=len(all_users), logins_attempted=0, logins_succeeded=0)
 
         threads = []
         overdue_count = 0
@@ -155,14 +154,14 @@ def _hourly_check(app):
         _succeeded_count = 0
 
         for user in all_users:
-            next_login = _next_login_time(user)
+            next_login = next_login_time(user)
             if next_login is None:
                 continue
 
             if next_login <= now:
                 overdue_count += 1
                 t = threading.Thread(
-                    target=_login_single_user,
+                    target=login_single_user,
                     args=(app, user.id),
                     name=f"login-{user.vt_email}",
                 )
@@ -178,7 +177,7 @@ def _hourly_check(app):
                     delay / 60,
                     next_login.strftime("%H:%M"),
                 )
-                t = threading.Timer(delay, _login_single_user, args=[app, user.id])
+                t = threading.Timer(delay, login_single_user, args=[app, user.id])
                 t.name = f"login-timer-{user.vt_email}"
                 t.start()
                 threads.append(t)
@@ -186,11 +185,11 @@ def _hourly_check(app):
         attempted = overdue_count + scheduled_count
 
         if attempted == 0:
-            _save_state(app, last_result="No users due for login")
+            save_state(app, last_result="No users due for login")
             logger.info("Hourly check: %d users, none due this window", len(all_users))
             return
 
-        _save_state(app, logins_attempted=attempted)
+        save_state(app, logins_attempted=attempted)
         logger.info(
             "Hourly check: %d users — %d overdue (now), %d scheduled (this hour)",
             len(all_users),
@@ -201,25 +200,25 @@ def _hourly_check(app):
         for t in threads:
             t.join()
 
-        _save_state(app,
-                    logins_succeeded=_succeeded_count,
-                    last_result=f"{_succeeded_count}/{attempted} logins succeeded")
+        save_state(
+            app, logins_succeeded=_succeeded_count, last_result=f"{_succeeded_count}/{attempted} logins succeeded"
+        )
 
 
 def scheduler_loop(app):
     """Check on startup, then at the top of every hour."""
     logger.info("Running startup check for overdue logins")
-    _hourly_check(app)
+    hourly_check(app)
 
     while True:
         now = datetime.utcnow()
         next_hour = (now + timedelta(hours=1)).replace(minute=0, second=0, microsecond=0)
         wait = (next_hour - now).total_seconds()
-        _save_state(app, next_check=next_hour)
+        save_state(app, next_check=next_hour)
         logger.info("Next check at %s UTC (in %.0f min)", next_hour.strftime("%H:%M"), wait / 60)
         time.sleep(wait)
 
-        _hourly_check(app)
+        hourly_check(app)
 
 
 def start_scheduler(app):
@@ -230,7 +229,7 @@ def start_scheduler(app):
 
     _scheduler_started = True
     with app.app_context():
-        _save_state(app, running=True)
+        save_state(app, running=True)
     logger.info("Starting login scheduler (hourly checks, aligned to clock)")
 
     thread = threading.Thread(

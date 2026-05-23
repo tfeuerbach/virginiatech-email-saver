@@ -32,7 +32,7 @@ def is_configured():
     return bool(current_app.config.get("SMTP_HOST"))
 
 
-def _send_email(to_email, subject, html, plain):
+def send_email(to_email, subject, html, plain):
     """Low-level SMTP send. Returns True on success, False on failure (never raises)."""
     config = get_smtp_config()
     if config is None:
@@ -86,7 +86,7 @@ def send_welcome_email(to_email, cadence_days: int):
 
     subject = "Welcome to VT Email Saver — You're All Set"
 
-    ok = _send_email(to_email, subject, html, plain)
+    ok = send_email(to_email, subject, html, plain)
     if ok:
         logger.info("Welcome email sent to %s", to_email)
     return ok
@@ -105,7 +105,7 @@ def send_login_reminder(to_email, next_login_utc: datetime, cadence_days: int):
     html = render_template("emails/login_reminder.html", **template_vars)
     plain = render_template("emails/login_reminder.txt", **template_vars)
 
-    ok = _send_email(to_email, subject, html, plain)
+    ok = send_email(to_email, subject, html, plain)
     if ok:
         logger.info("Login reminder sent to %s", to_email)
     return ok

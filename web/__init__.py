@@ -59,7 +59,7 @@ def add_column_if_missing(app, table, column, col_type):
         logging.getLogger(__name__).warning("Migration check failed: %s", e)
 
 
-def create_app():
+def create_app(test_config=None):
     project_root = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
     instance_path = os.path.join(project_root, "instance")
 
@@ -68,7 +68,11 @@ def create_app():
     app = Flask(__name__, instance_path=instance_path, static_folder="static")
     app.config.from_object(ActiveConfig)
 
-    if app.config["SQLALCHEMY_DATABASE_URI"].startswith("sqlite:"):
+    if test_config:
+        app.config.update(test_config)
+
+    db_uri = app.config["SQLALCHEMY_DATABASE_URI"]
+    if db_uri.startswith("sqlite:") and ":memory:" not in db_uri:
         app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + os.path.join(instance_path, "encrypted_credentials.db")
 
     csrf.init_app(app)

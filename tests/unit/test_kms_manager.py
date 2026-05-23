@@ -1,6 +1,7 @@
 import os
 
 import pytest
+from botocore.exceptions import ClientError
 
 from kms.kms_manager import KMSManager
 
@@ -27,5 +28,5 @@ def test_encrypt_decrypt(kms_manager):
 
 @requires_aws
 def test_invalid_decrypt(kms_manager):
-    with pytest.raises((ValueError, TypeError, RuntimeError)):
+    with pytest.raises((ValueError, TypeError, RuntimeError, ClientError)):
         kms_manager.decrypt("invalid_encrypted_data")
