@@ -49,6 +49,28 @@
                 <span class="dash-stat-value" id="next-login" data-time="{{ next_login }}">—</span>
             </div>
         </div>
+        <div class="dash-overview-divider"></div>
+        <div class="dash-overview-stat">
+            <div class="dash-stat-icon"><i class="bi bi-globe2" aria-hidden="true"></i></div>
+            <div class="dash-stat-body">
+                <span class="dash-stat-label">Timezone</span>
+                <span class="dash-stat-value" id="tz-display">
+                    <span id="tz-display-text">{{ timezone_label or '' }}</span>
+                    <button id="tz-change-btn" class="btn-tz-change" title="Change timezone">change</button>
+                </span>
+                <div id="tz-edit" class="tz-edit" style="display: none;">
+                    <select id="tz-select" class="preferred-select preferred-select--tz">
+                        {% for tz_val, tz_lbl in timezone_choices %}
+                            <option value="{{ tz_val }}" {% if timezone == tz_val %}selected{% endif %}>{{ tz_lbl }}</option>
+                        {% endfor %}
+                    </select>
+                    <span class="tz-edit-actions">
+                        <button id="tz-save-btn" class="btn-tz-save">Save</button>
+                        <button id="tz-cancel-btn" class="btn-tz-cancel">Cancel</button>
+                    </span>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Quick links -->
@@ -91,6 +113,30 @@
             </div>
             <button id="save-cadence-btn" class="btn-save-cadence" disabled>Save</button>
             <p id="cadence-status" class="cadence-status"></p>
+        </div>
+
+        <hr class="dash-divider">
+
+        <h3 class="dash-subsection-title">Preferred Login Time</h3>
+        <p class="dash-card-desc">Pick a time of day so you know when to expect the Duo push. Uses your timezone above.</p>
+
+        <div class="preferred-time-control">
+            <div class="preferred-time-row">
+                <select id="preferred-hour" class="preferred-select preferred-select--time">
+                    <option value="" id="no-pref-option">No preference</option>
+                    {% for h in range(24) %}
+                        {% set ampm = "AM" if h < 12 else "PM" %}
+                        {% set h12 = h % 12 %}
+                        {% if h12 == 0 %}{% set h12 = 12 %}{% endif %}
+                        <option value="{{ h }}" {% if preferred_hour is not none and preferred_hour == h %}selected{% endif %}>
+                            {{ h12 }}:00 {{ ampm }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <button id="save-preferred-btn" class="btn-save-cadence" disabled>Save</button>
+            <p id="preferred-status" class="cadence-status"></p>
         </div>
     </div>
 
@@ -192,16 +238,17 @@
     <!-- Scheduler (compact bar) -->
     <div class="dash-card dash-scheduler-bar" id="scheduler-card">
         <h2 class="dash-card-title"><i class="bi bi-robot" aria-hidden="true"></i> Scheduler</h2>
+        <p class="dash-scheduler-hint">Scans hourly for logins due within the next 60 minutes</p>
         <div class="dash-scheduler-cols">
             {% if scheduler_next_check %}
             <div class="dash-scheduler-col">
-                <span class="dash-scheduler-label">Next Check</span>
+                <span class="dash-scheduler-label">Next Scan</span>
                 <span class="dash-scheduler-value" id="scheduler-next-check" data-time="{{ scheduler_next_check }}">—</span>
             </div>
             {% endif %}
             {% if scheduler_last_check %}
             <div class="dash-scheduler-col">
-                <span class="dash-scheduler-label">Last Check</span>
+                <span class="dash-scheduler-label">Last Scan</span>
                 <span class="dash-scheduler-value" id="scheduler-last-check" data-time="{{ scheduler_last_check }}">—</span>
             </div>
             {% endif %}

@@ -1,24 +1,9 @@
-/**
- * dashboard.js — All interactive behaviour for the dashboard page
- *
- * Sections:
- *   1. Date formatting
- *   2. Cadence slider
- *   3. Email opt-in toggle
- *   4. Notification email editing
- *   5. Privacy-policy modal
- *   6. SMS opt-in
- *   7. Account removal (swipe + confirm)
- */
+// dashboard.js
 
 (function () {
     'use strict';
 
     var csrf = document.querySelector('meta[name="csrf-token"]').content;
-
-    /* ------------------------------------------------------------------ */
-    /*  helpers                                                            */
-    /* ------------------------------------------------------------------ */
 
     function formatDateTime(utcDateTime) {
         var d = new Date(utcDateTime);
@@ -30,6 +15,7 @@
             hour: '2-digit',
             minute: '2-digit',
             second: '2-digit',
+            timeZoneName: 'short',
         });
     }
 
@@ -41,10 +27,7 @@
         });
     }
 
-    /* ------------------------------------------------------------------ */
-    /*  1. Date formatting                                                 */
-    /* ------------------------------------------------------------------ */
-
+    // localize timestamps
     ['last-login', 'next-login', 'scheduler-next-check', 'scheduler-last-check']
         .forEach(function (id) {
             var el = document.getElementById(id);
@@ -53,10 +36,7 @@
             }
         });
 
-    /* ------------------------------------------------------------------ */
-    /*  2. Cadence slider                                                  */
-    /* ------------------------------------------------------------------ */
-
+    // cadence slider
     (function () {
         var slider = document.getElementById('cadence-slider');
         var valueLabel = document.getElementById('cadence-value');
@@ -102,13 +82,138 @@
         });
     })();
 
-    /* ------------------------------------------------------------------ */
-    /*  3. Email opt-in toggle                                             */
-    /* ------------------------------------------------------------------ */
+    // timezone (overview bar)
+    (function () {
+        var displayText = document.getElementById('tz-display-text');
+        var changeBtn = document.getElementById('tz-change-btn');
+        var editPanel = document.getElementById('tz-edit');
+        var tzSelect = document.getElementById('tz-select');
+        var saveBtn = document.getElementById('tz-save-btn');
+        var cancelBtn = document.getElementById('tz-cancel-btn');
+        var displayWrap = document.getElementById('tz-display');
+        var nextLoginEl = document.getElementById('next-login');
 
+        if (!displayText || !tzSelect) return;
+
+        var tzNames = {
+            'America/New_York': 'Eastern', 'America/Chicago': 'Central',
+            'America/Denver': 'Mountain', 'America/Los_Angeles': 'Pacific',
+            'America/Anchorage': 'Alaska', 'Pacific/Honolulu': 'Hawaii',
+            'UTC': 'UTC',
+        };
+
+        function friendlyTz(iana) {
+            return tzNames[iana] || iana;
+        }
+
+        // auto-detect if not stored
+        var browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+        if (!displayText.textContent.trim() && browserTz) {
+            displayText.textContent = friendlyTz(browserTz);
+            if (tzSelect.querySelector('option[value="' + browserTz + '"]')) {
+                tzSelect.value = browserTz;
+            }
+            postJson('/update_timezone', { timezone: browserTz });
+        }
+
+        changeBtn.addEventListener('click', function () {
+            displayWrap.style.display = 'none';
+            editPanel.style.display = '';
+        });
+
+        cancelBtn.addEventListener('click', function () {
+            editPanel.style.display = 'none';
+            displayWrap.style.display = '';
+        });
+
+        saveBtn.addEventListener('click', function () {
+            saveBtn.disabled = true;
+            saveBtn.textContent = '...';
+
+            postJson('/update_timezone', { timezone: tzSelect.value })
+                .then(function (res) { return res.json(); })
+                .then(function (data) {
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = 'Save';
+                    if (data.error) return;
+                    displayText.textContent = data.timezone_label;
+                    editPanel.style.display = 'none';
+                    displayWrap.style.display = '';
+                    if (data.next_login && nextLoginEl) {
+                        nextLoginEl.textContent = data.next_login;
+                    }
+                })
+                .catch(function () {
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = 'Save';
+                });
+        });
+    })();
+
+    // preferred login time
+    (function () {
+        var hourSelect = document.getElementById('preferred-hour');
+        var noPrefOption = document.getElementById('no-pref-option');
+        var saveBtn = document.getElementById('save-preferred-btn');
+        var statusEl = document.getElementById('preferred-status');
+        var nextLoginEl = document.getElementById('next-login');
+
+        if (!hourSelect) return;
+
+        // show local time on "no preference" option
+        if (noPrefOption && nextLoginEl && nextLoginEl.dataset.time) {
+            try {
+                var d = new Date(nextLoginEl.dataset.time);
+                if (!isNaN(d.getTime())) {
+                    var localTime = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+                    noPrefOption.textContent = 'No preference (currently ' + localTime + ')';
+                }
+            } catch (e) { /* leave default text */ }
+        }
+
+        var savedHour = hourSelect.value;
+
+        hourSelect.addEventListener('change', function () {
+            saveBtn.disabled = (hourSelect.value === savedHour);
+        });
+
+        saveBtn.addEventListener('click', function () {
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saving...';
+            statusEl.textContent = '';
+
+            var hour = hourSelect.value === '' ? null : parseInt(hourSelect.value, 10);
+
+            postJson('/update_preferred_time', { preferred_hour: hour })
+                .then(function (res) { return res.json(); })
+                .then(function (data) {
+                    saveBtn.textContent = 'Save';
+                    if (data.error) {
+                        statusEl.textContent = data.error;
+                        statusEl.style.color = '#ff6b6b';
+                        saveBtn.disabled = false;
+                    } else {
+                        statusEl.textContent = data.message;
+                        statusEl.style.color = '#90ee90';
+                        savedHour = hourSelect.value;
+                        if (data.next_login && nextLoginEl) {
+                            nextLoginEl.textContent = data.next_login;
+                        }
+                    }
+                })
+                .catch(function () {
+                    statusEl.textContent = 'Failed to save. Please try again.';
+                    statusEl.style.color = '#ff6b6b';
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = 'Save';
+                });
+        });
+    })();
+
+    // email opt-in toggle
     (function () {
         var toggle = document.getElementById('email-opt-in-toggle');
-        if (!toggle) return; // SMTP not configured
+        if (!toggle) return;
         var panel = document.getElementById('email-settings-panel');
 
         toggle.addEventListener('change', function () {
@@ -130,10 +235,7 @@
         });
     })();
 
-    /* ------------------------------------------------------------------ */
-    /*  4. Notification email editing                                      */
-    /* ------------------------------------------------------------------ */
-
+    // notification email editing
     (function () {
         var display = document.getElementById('notif-email-display');
         var input = document.getElementById('notif-email-input');
@@ -199,10 +301,7 @@
         });
     })();
 
-    /* ------------------------------------------------------------------ */
-    /*  5. Privacy-policy modal                                            */
-    /* ------------------------------------------------------------------ */
-
+    // privacy-policy modal
     (function () {
         var modal = document.getElementById('privacy-modal');
         var openBtns = document.querySelectorAll('#open-privacy-modal, #footer-privacy-link');
@@ -228,10 +327,7 @@
         });
     })();
 
-    /* ------------------------------------------------------------------ */
-    /*  6. SMS opt-in                                                      */
-    /* ------------------------------------------------------------------ */
-
+    // SMS opt-in
     (function () {
         var toggle = document.getElementById('sms-opt-in-toggle');
         var panel = document.getElementById('sms-opt-in-panel');
@@ -294,10 +390,7 @@
         }
     })();
 
-    /* ------------------------------------------------------------------ */
-    /*  7. Account removal — swipe to reveal, then confirm                 */
-    /* ------------------------------------------------------------------ */
-
+    // account removal (swipe to reveal, then confirm)
     (function () {
         var track = document.getElementById('swipe-track');
         var thumb = document.getElementById('swipe-thumb');

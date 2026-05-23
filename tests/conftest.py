@@ -5,8 +5,9 @@ from web.database import db as _db
 
 
 @pytest.fixture
-def app():
+def app(monkeypatch):
     """Create an app with an in-memory SQLite DB and CSRF disabled."""
+    monkeypatch.setenv("TESTING", "1")
     app = create_app()
     app.config.update(
         TESTING=True,
@@ -28,8 +29,9 @@ def client(app):
 
 
 @pytest.fixture
-def csrf_app():
+def csrf_app(monkeypatch):
     """Create an app with CSRF enabled (for CSRF-specific tests)."""
+    monkeypatch.setenv("TESTING", "1")
     app = create_app()
     app.config.update(
         TESTING=True,
