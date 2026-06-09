@@ -15,11 +15,12 @@ logger = logging.getLogger(__name__)
 CHROME_BIN = os.getenv("CHROME_BIN", "/usr/bin/google-chrome")
 CHROMEDRIVER_PATH = os.getenv("CHROMEDRIVER_PATH", "/usr/local/bin/chromedriver")
 HEADLESS = os.getenv("SELENIUM_HEADLESS", "true").lower() in ("true", "1", "yes")
+INTERNAL_URL = os.getenv("INTERNAL_URL", "http://127.0.0.1:5000")
 
 
 class GoogleLogin:
     def __init__(self):
-        """Set up Chrome for automated login (headless by default)."""
+        """Set up headless Chrome."""
         self.service = Service(CHROMEDRIVER_PATH)
         self.options = Options()
 
@@ -38,14 +39,14 @@ class GoogleLogin:
         self.driver = webdriver.Chrome(service=self.service, options=self.options)
 
     def update_progress(self, step):
-        """Ping the progress endpoint so the frontend can show animations."""
+        """Ping the progress endpoint for frontend updates."""
         try:
-            requests.post("http://127.0.0.1:5000/update_progress", json={"step": step})
+            requests.post(f"{INTERNAL_URL}/update_progress", json={"step": step})
         except Exception as e:
             logger.warning("Failed to send progress update: %s", e)
 
     def login(self, email, username, password):
-        """Drive through Google -> VT CAS -> Duo and return success/failure."""
+        """Google -> VT CAS -> Duo login flow. Returns dict with success/error."""
         self.start_browser()
         wait = WebDriverWait(self.driver, 20)
 
@@ -54,14 +55,10 @@ class GoogleLogin:
             self.driver.get("https://mail.google.com")
             self.update_progress(2)
 
-            # Enter email on Google's page
             wait.until(EC.presence_of_element_located((By.ID, "identifierId"))).send_keys(email)
             wait.until(EC.element_to_be_clickable((By.ID, "identifierNext"))).click()
 
-            # Wait for either CAS page or a Google error (no fixed sleep)
             time.sleep(1)
-
-            # Check for Google-side errors
             try:
                 error_element = self.driver.find_element(
                     By.XPATH, "//*[contains(@class, 'error') or contains(@jsname, 'B34EJ')]"
@@ -73,15 +70,11 @@ class GoogleLogin:
             except Exception:
                 pass
 
-            # Enter VT CAS credentials
             wait.until(EC.presence_of_element_located((By.ID, "username"))).send_keys(username)
             wait.until(EC.presence_of_element_located((By.ID, "password"))).send_keys(password)
             wait.until(EC.element_to_be_clickable((By.XPATH, "//button[@type='submit']"))).click()
 
-            # Brief pause for CAS to respond before checking for errors
             time.sleep(1)
-
-            # Check for bad password
             try:
                 error_element = self.driver.find_element(By.ID, "error")
                 if error_element.is_displayed():
@@ -91,7 +84,6 @@ class GoogleLogin:
             except Exception:
                 pass
 
-            # Wait for Duo 2FA
             self.update_progress(3)
             logger.info("Waiting for Duo push notification...")
 
@@ -101,7 +93,6 @@ class GoogleLogin:
                 time.sleep(2)
                 current_url = self.driver.current_url
 
-                # Auto-click "Yes, this is my device" if it shows up
                 if "duosecurity.com" in current_url and not duo_prompt_handled:
                     try:
                         yes_button = self.driver.find_element(
@@ -114,7 +105,6 @@ class GoogleLogin:
                     except Exception:
                         pass
 
-                # We're in Gmail — login worked
                 if "mail.google.com" in current_url:
                     self.update_progress(4)
                     logger.info("Login successful for %s", email)

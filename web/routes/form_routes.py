@@ -39,11 +39,7 @@ def index():
 
 @form_bp.route("/submit", methods=["POST"])
 def submit():
-    """Kick off the login flow in a background thread and return immediately.
-
-    Sets the session cookie and step 1 right away so the client can
-    navigate to /processing and start polling progress.
-    """
+    """Kick off the login flow in a background thread."""
     progress_updates = get_progress_store()
 
     data = request.get_json()
@@ -56,7 +52,6 @@ def submit():
     if not vt_email.endswith("@vt.edu"):
         return jsonify({"error": "Invalid Virginia Tech email address"}), 400
 
-    # --- dev/test shortcut: skip Selenium + KMS entirely ---
     if vt_email == TEST_EMAIL and vt_password == TEST_PASSWORD:
         logger.info("Test user login — bypassing Selenium and KMS")
         session["authenticated_email"] = vt_email
@@ -83,19 +78,14 @@ def submit():
                 cred.welcome_email_sent = True
                 db.session.commit()
 
-        # jump straight to "done" so the processing page redirects immediately
         progress_updates["step"] = 4
         progress_updates["error"] = ""
         return jsonify({"message": "Login started"})
 
-    # Set the session now so the cookie travels with this response
     session["authenticated_email"] = vt_email
-
-    # Mark step 1 immediately
     progress_updates["step"] = 1
     progress_updates["error"] = ""
 
-    # Run the slow Selenium flow in a background thread
     app = current_app._get_current_object()
 
     def run_login():
@@ -107,7 +97,7 @@ def submit():
 
                 if login_result["success"]:
                     progress_updates["step"] = 4
-                    plaintext = f"{vt_email},{vt_username},{vt_password}"
+                    plaintext = f"{vt_email}|{vt_username}|{vt_password}"
                     encrypted = kms_manager.encrypt(plaintext)
 
                     existing = EncryptedCredential.query.filter_by(vt_email=vt_email).first()

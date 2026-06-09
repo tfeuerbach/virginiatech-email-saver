@@ -109,7 +109,7 @@ def login_single_user(app, user_id):
         email = user.vt_email
         try:
             decrypted = kms_manager.decrypt(user.encrypted_key)
-            _, username, password = decrypted.split(",")
+            _, username, password = decrypted.split("|", maxsplit=2)
 
             if user.sms_opt_in and user.phone_number:
                 if sms_notifier.is_configured():

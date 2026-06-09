@@ -66,7 +66,7 @@ def dashboard():
         username = "testuser"
     else:
         decrypted_credentials = kms_manager.decrypt(credential.encrypted_key)
-        username, _ = decrypted_credentials.split(",")[1:]
+        _, username, _ = decrypted_credentials.split("|", maxsplit=2)
 
     cadence = credential.login_cadence_days or DEFAULT_CADENCE_DAYS
     next_login = next_login_time(credential)
@@ -76,7 +76,7 @@ def dashboard():
         "dashboard.html",
         vt_email=credential.vt_email,
         username=username,
-        last_login=credential.last_login.strftime("%B %d, %Y, %I:%M %p"),
+        last_login=credential.last_login.strftime("%B %d, %Y, %I:%M %p") if credential.last_login else None,
         next_login=next_login.strftime("%B %d, %Y, %I:%M %p") if next_login else None,
         login_cadence_days=cadence,
         min_cadence=MIN_CADENCE_DAYS,

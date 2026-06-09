@@ -19,7 +19,7 @@ def seed_user(email="test@vt.edu"):
 
 mock_decrypt = patch(
     "web.routes.dashboard_routes.kms_manager.decrypt",
-    return_value="test@vt.edu,testuser,testpassword",
+    return_value="test@vt.edu|testuser|testpassword",
 )
 
 
