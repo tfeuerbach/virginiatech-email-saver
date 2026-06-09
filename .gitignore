@@ -160,6 +160,7 @@ jspm_packages/
 
 # dotenv environment variables file
 .env
+!.env.example
 
 # next.js build output
 .next
@@ -258,3 +259,6 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+DEPLOY.md
+.ruff_cache

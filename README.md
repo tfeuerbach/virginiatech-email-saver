@@ -1,114 +1,314 @@
-# Virginia Tech Gmail Login Automation
+# Virginia Tech Email Saver
 
-This project is a Flask-based application designed to help users keep their Virginia Tech Gmail accounts active by automating the monthly login process. It encrypts user credentials securely and automates the login flow to Gmail and the Virginia Tech Single Sign-On (SSO) portal using Selenium.
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.11-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python">
+  <img src="https://img.shields.io/badge/Flask-3.1-000000?style=for-the-badge&logo=flask&logoColor=white" alt="Flask">
+  <img src="https://img.shields.io/badge/PostgreSQL-15-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL">
+  <img src="https://img.shields.io/badge/Selenium-4.27-43B02A?style=for-the-badge&logo=selenium&logoColor=white" alt="Selenium">
+  <img src="https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker">
+  <img src="https://img.shields.io/badge/AWS_KMS-Encryption-FF9900?style=for-the-badge" alt="AWS KMS">
+  <img src="https://img.shields.io/badge/Gunicorn-23.0-499848?style=for-the-badge&logo=gunicorn&logoColor=white" alt="Gunicorn">
+  <img src="https://img.shields.io/badge/Bootstrap-5.3-7952B3?style=for-the-badge&logo=bootstrap&logoColor=white" alt="Bootstrap">
+</p>
+
+Keep your Virginia Tech Gmail account active with automated logins. This Flask-based web app securely stores your credentials, automates the entire VT SSO + Duo 2FA login flow, and lets you control how often it runs.
+
+**Live at [vtemailsaver.tfeuerbach.dev](https://vtemailsaver.tfeuerbach.dev)** — or self-host it yourself if you'd rather not trust a third party with your credentials. Everything you need is in this repo.
+
+## Architecture
+
+```mermaid
+sequenceDiagram
+    actor You
+    participant App as Flask App
+    participant Bot as Headless Chrome
+    participant VT as VT SSO + Duo
+    participant AWS as AWS KMS
+    participant DB as PostgreSQL
+
+    rect rgba(99, 0, 49, 0.08)
+    Note over You,DB: First-time setup
+    You->>App: Submit email + password
+    App->>Bot: Verify credentials via login
+    Bot->>VT: SSO → Google sign-in → Duo
+    VT-->>You: 📱 Approve Duo push on phone
+    Bot-->>App: Login succeeded
+    App->>AWS: Encrypt credentials
+    App->>DB: Store encrypted
+    App-->>You: Redirected to dashboard
+    end
+
+    rect rgba(232, 119, 34, 0.08)
+    Note over You,DB: Every N days (automated)
+    App-->>You: 📧 Reminder email (day before)
+    App-->>You: 📲 SMS reminder (~1 min before)
+    App->>DB: Query accounts due for login
+    App->>AWS: Decrypt credentials
+    App->>Bot: Drive login flow
+    Bot->>VT: SSO → Google sign-in → Duo
+    VT-->>You: 📱 Approve Duo push on phone
+    end
+```
+
+<details>
+<summary><strong>System architecture (click to expand)</strong></summary>
+
+```mermaid
+graph TB
+    subgraph Internet
+        User["🌐 User"]
+        CF["☁️ Cloudflare Tunnel"]
+    end
+
+    subgraph Server["Home Server · Docker Compose"]
+        Gunicorn["Flask + Gunicorn<br/>Web UI · Dashboard · API"]
+        Scheduler["⏰ Background Scheduler"]
+        Chrome["🖥️ Headless Chrome + Selenium"]
+        DB[("🗄️ PostgreSQL<br/>encrypted credentials")]
+    end
+
+    subgraph AWS["Amazon Web Services"]
+        KMS["🔐 KMS<br/>encryption keys"]
+        SES["📧 SES<br/>email reminders"]
+    end
+
+    subgraph Twilio["Twilio"]
+        SMS["📲 SMS<br/>text reminders"]
+    end
+
+    subgraph VT["Virginia Tech"]
+        SSO["SSO Portal"]
+        Google["Google Sign-in"]
+        Duo["Duo 2FA"]
+    end
+
+    User <-->|HTTPS| CF
+    CF <-->|HTTP :5000| Gunicorn
+    Gunicorn <-->|read / write| DB
+    Gunicorn <-->|encrypt / decrypt| KMS
+
+    Scheduler -->|query due accounts| DB
+    Scheduler -->|decrypt credentials| KMS
+    Scheduler -->|day-before reminder| SES
+    Scheduler -->|1-min SMS heads-up| SMS
+    Scheduler -->|automate login| Chrome
+
+    SES -.->|📧 email| User
+    SMS -.->|📲 text| User
+    Chrome --> SSO --> Google --> Duo
+    Duo -.->|📱 push| User
+```
+
+</details>
 
 ## Features
 
-- **Credential Encryption**: User credentials are encrypted using AWS KMS before being stored in a database.
-- **Automated Login**: Selenium handles logging into Gmail and Virginia Tech's SSO portal, including handling Duo 2FA prompts.
-- **Database Management**: Encrypted credentials are securely stored in an SQLite database.
-- **Web Interface**: Users can submit their credentials via a simple web form.
-- **JavaScript Test Suite**: Added comprehensive testing using Vitest for front-end functionality.
-- **Modular Design**: Clean separation of back-end, front-end, and utility modules for easier development and maintenance.
+- **Automated Gmail Logins** — Selenium drives a headless Chrome instance through VT's SSO portal, Google sign-in, and Duo 2FA prompts.
+- **Configurable Login Cadence** — Set how often the app logs in on your behalf (1–90 days, defaults to 25) via a dashboard slider.
+- **Background Scheduler** — A daemon thread checks daily for accounts due for a login and runs them automatically.
+- **Login Reminders** — Optional email notification the day before each login, toggleable on/off from the dashboard. Also includes a downloadable recurring `.ics` calendar event (Apple Calendar, Google Calendar, Outlook).
+- **SMS Notifications** — Opt-in text message reminders via Twilio, sent ~1 minute before each scheduled login.
+- **Custom Notification Email** — Use a different email address for login reminders instead of your VT email.
+- **Account Removal** — Remove your account and all stored data with a swipe-to-confirm gesture. Log in again any time to re-register.
+- **Privacy Policy** — In-app privacy policy covering data handling, third-party services, and opt-out instructions.
+- **Dashboard** — View your last login, next scheduled login, scheduler status, and adjust all settings in one place.
+- **Modern UI** — Glassmorphism cards, gradient background, Rubik font, Lottie animations, and responsive layout.
+- **Production-Ready** — Gunicorn, PostgreSQL, Docker Compose, and Cloudflare Tunnel support.
 
-## Prerequisites
+## Security
 
-- Python 3.11 or higher
-- Flask and Flask-SQLAlchemy
-- Selenium WebDriver and Chromium
-- AWS KMS key for credential encryption
-- `chromedriver` installed and configured
-- Node.js (for JavaScript testing)
-- Vitest (installed via `npm install vitest`)
+Your credentials are **never stored in plaintext**. The source code is fully open — you can audit every line.
 
-## Installation
+1. **AWS KMS encryption** — Credentials are encrypted with [AWS KMS](https://aws.amazon.com/kms/) before touching the database. The encryption key lives in AWS, not on the server.
+2. **Session-based auth** — The dashboard is protected by server-side sessions. No user-facing URLs leak account information.
+3. **CSRF protection** — Every POST endpoint is guarded by Flask-WTF CSRF tokens.
+4. **Endpoint lockdown** — All sensitive endpoints require an authenticated session. Unauthenticated requests are rejected or redirected.
+5. **Secure cookies** — HTTP-only, SameSite-restricted. HTTPS-only in production.
+6. **No credential logging** — Passwords are never written to logs. The app uses structured Python `logging` throughout.
 
-1. Clone the repository:
-   ```bash
-   git clone <repository-url>
-   cd virginiatech-email-saver
-   ```
+## Tech Stack
 
-2. Create a virtual environment:
-   ```bash
-   python3 -m venv .envs/vt_login
-   source .envs/vt_login/bin/activate
-   ```
+| Layer | Technology |
+|-------|-----------|
+| Backend | Flask, Gunicorn, SQLAlchemy |
+| Database | PostgreSQL or SQLite |
+| Encryption | AWS KMS via `aws-encryption-sdk` |
+| Notifications | AWS SES (email), Twilio (SMS), iCalendar (.ics) |
+| Browser Automation | Selenium + headless Chrome |
+| Frontend | HTML/CSS/JS, Bootstrap 5, Lottie animations |
+| Infrastructure | Docker Compose, Cloudflare Tunnel |
 
-3. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+## Self-Hosting
 
-4. Install Node.js dependencies:
-   ```bash
-   npm install
-   ```
+Don't want to hand your credentials to a hosted service? Totally fair — that's why this repo exists. You can run the entire app yourself with a minimal setup and host it for yourself or your friends. **No email service, no SMS provider, no Cloudflare account needed.**
 
-5. Configure AWS KMS:
-   Add your KMS key ARN and AWS credentials to the `.env` file:
-   ```
-   AWS_ACCESS_KEY_ID=<your-access-key>
-   AWS_SECRET_ACCESS_KEY=<your-secret-key>
-   KMS_KEY_ID=arn:aws:kms:<region>:<account-id>:key/<key-id>
-   ```
+### What you need
 
-6. Ensure `chromedriver` is installed and available in your PATH.
+| Requirement | Why |
+|---|---|
+| AWS account with a KMS key | Encrypts your credentials at rest ([free tier](https://aws.amazon.com/kms/pricing/) covers 20,000 requests/month) |
+| Docker **or** Python 3.11+ & Google Chrome | Runs the app (Docker is easiest — it bundles Chrome for you) |
 
-7. Initialize the Flask app:
-   ```bash
-   python -m web.app
-   ```
+That's it. Everything else — email reminders, SMS notifications, Cloudflare Tunnel, PostgreSQL — is completely optional. The app detects which services are configured and disables the rest gracefully.
 
-## Usage
+### 1. Clone and configure
 
-1. Start the Flask app:
-   ```bash
-   python -m web.app
-   ```
+```bash
+git clone https://github.com/tfeuerbach/virginiatech-email-saver.git
+cd virginiatech-email-saver
+cp .env.example .env
+```
 
-2. Open the app in your browser:
-   ```
-   http://127.0.0.1:5000
-   ```
+Open `.env` and fill in your AWS KMS credentials and a `SECRET_KEY`. You can ignore every other variable:
 
-3. Submit your Virginia Tech email, username, and password. The app will:
-   - Encrypt your credentials using AWS KMS.
-   - Store them securely in the SQLite database.
-   - Automate the login process using Selenium.
+```env
+FLASK_ENV=development
+SECRET_KEY=any-random-string-here
 
-4. Verify the stored credentials:
-   ```bash
-   sqlite3 web/instance/encrypted_credentials.db
-   SELECT * FROM encrypted_credential;
-   ```
+AWS_ACCESS_KEY_ID=your-key
+AWS_SECRET_ACCESS_KEY=your-secret
+AWS_REGION=us-east-1
+KMS_KEY_ID=your-kms-key-id
+```
 
-## Testing
+### 2. Run the app
 
-### Python Tests
-- Python tests for back-end functionality are located in the `tests/` directory.
-- Run the Python tests:
-   ```bash
-   pytest
-   ```
+#### Option A: Docker Compose (recommended)
 
-### JavaScript Tests
-- JavaScript tests for front-end functionality are located in `web/tests/`.
-- Run the JavaScript tests:
-   ```bash
-   npm run test
-   ```
+The container bundles Python, Chrome, ChromeDriver, and all dependencies — nothing else to install.
 
-## Future Enhancements
+```bash
+docker compose up --build -d
+```
 
-- Add a periodic task scheduler to automate the login process every 25 days.
-- Integrate user notifications (e.g., email reminders) for login status.
-- Enhance the web interface for better user experience.
-- Include support for additional two-factor authentication methods.
+The app starts on `http://localhost:5000` with PostgreSQL and Gunicorn. To bring it down: `docker compose down`. Your data persists in a Docker volume.
+
+#### Option B: Run locally without Docker
+
+If you'd rather skip Docker, you'll need Python 3.11+ and Google Chrome installed on your machine.
+
+```bash
+python3 -m venv .envs/vt_login
+source .envs/vt_login/bin/activate
+pip install -r requirements.txt
+flask --app web run
+```
+
+No `DATABASE_URL` needed — the app defaults to a local SQLite file (`instance/encrypted_credentials.db`), created automatically on first run.
+
+Either way, open `http://localhost:5000`, add your VT account, and you're done.
+
+### 3. Track your logins
+
+The dashboard has a **Download Calendar** button that gives you a recurring `.ics` file. Import it into Apple Calendar, Google Calendar, Outlook, or any iCalendar-compatible app and you'll get reminders before each scheduled login with built-in alerts at 1 hour and 15 minutes before — no email or SMS service required.
+
+When a login runs, just approve the Duo push on your phone.
+
+### Optional: Email notifications
+
+If you want email reminders the day before each login (plus a welcome email when you first add your account), add SMTP credentials to your `.env`. Works with any SMTP provider — AWS SES, Gmail app passwords, SendGrid, Mailgun, etc.:
+
+```env
+SMTP_HOST=email-smtp.us-east-1.amazonaws.com
+SMTP_PORT=587
+SMTP_USER=your-smtp-username
+SMTP_PASSWORD=your-smtp-password
+SMTP_FROM_EMAIL=noreply@yourdomain.com
+SMTP_FROM_NAME=VT Email Saver
+SMTP_USE_TLS=true
+```
+
+If `SMTP_HOST` is blank or missing, the app skips all email features. The dashboard will show email notifications as "Off" until configured.
+
+### Optional: SMS notifications
+
+For text message reminders ~1 minute before each login, add Twilio credentials:
+
+```env
+TWILIO_ACCOUNT_SID=your-account-sid
+TWILIO_AUTH_TOKEN=your-auth-token
+TWILIO_FROM_NUMBER=+1XXXXXXXXXX
+```
+
+Same deal — leave these blank and SMS is simply disabled.
 
 ## Contributing
 
-Feel free to fork the repository and submit pull requests. Contributions are welcome
+Contributions are welcome! Here's how to set up a development environment.
+
+### Dev environment setup
+
+The app supports both **SQLite** (zero config) and **PostgreSQL** (production-like). For contributing, either works.
+
+#### Local development (SQLite)
+
+```bash
+git clone https://github.com/tfeuerbach/virginiatech-email-saver.git
+cd virginiatech-email-saver
+cp .env.example .env          # fill in AWS KMS creds + SECRET_KEY
+python3 -m venv .envs/vt_login
+source .envs/vt_login/bin/activate
+pip install -r requirements.txt
+flask --app web run
+```
+
+#### Docker Compose (PostgreSQL + Gunicorn)
+
+```bash
+docker compose up --build -d
+```
+
+Set `DATABASE_URL` in your `.env` to use Postgres:
+
+```env
+FLASK_ENV=production
+DATABASE_URL=postgresql://postgres:yourpassword@db:5432/encrypted_credentials
+```
+
+See [DEPLOY.md](DEPLOY.md) for full production deployment instructions including Cloudflare Tunnel setup.
+
+### Development vs. Production
+
+| | Development | Production |
+|---|---|---|
+| **Database** | SQLite (default) or Postgres | PostgreSQL |
+| **Server** | Flask dev server (debug + auto-reload) | Gunicorn (1 worker, 4 threads) |
+| **HTTPS** | Not required (cookies work over HTTP) | Required (secure cookies, Cloudflare Tunnel) |
+| **Config** | `FLASK_ENV=development` | `FLASK_ENV=production` |
+
+### Testing
+
+```bash
+# Inside Docker (recommended — has all dependencies):
+docker compose exec web python -m pytest tests/ -v
+
+# Or locally with a virtual environment:
+pytest
+```
+
+Covers unit tests (models, KMS encryption, authentication, CSRF, cadence validation) and integration tests (database operations).
+
+### Linting
+
+The project uses [Ruff](https://docs.astral.sh/ruff/) for linting and formatting. Configuration lives in `pyproject.toml`.
+
+```bash
+ruff check .          # lint
+ruff check --fix .    # lint + auto-fix
+ruff format .         # format
+ruff format --check . # check formatting without changes
+```
+
+### CI
+
+A GitHub Actions workflow (`.github/workflows/ci.yml`) runs both lint and test on every push and pull request to `main`/`master`. The test job only runs if linting passes.
+
+### Planned Improvements
+
+- **Alembic migrations** — Replace the current `add_column_if_missing` approach with [Alembic](https://alembic.sqlalchemy.org/) for versioned, reversible schema migrations.
+- **Mock AWS in tests** — Add mocked KMS tests (via `unittest.mock`) so encrypt/decrypt logic is covered in CI without real AWS credentials. The current KMS tests are skipped in CI and only run locally with valid credentials.
+
+Feel free to fork the repository, submit pull requests, or suggest improvements.
 
 ## License
 

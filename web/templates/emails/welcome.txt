@@ -1,0 +1,9 @@
+Welcome to VT Email Saver!
+
+Your account is all set up. We'll automatically log into your VT Gmail every {{ cadence_days }} days so your account stays active and your emails stay safe.
+
+How it works: Before each scheduled login we'll send you a reminder so you know to keep your phone handy for the Duo 2FA push.
+
+Right now reminders are going to your VT email ({{ vt_email }}). If you'd prefer a different address, you can change it anytime from your dashboard:
+
+{{ dashboard_url }}

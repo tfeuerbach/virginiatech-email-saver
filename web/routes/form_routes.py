@@ -1,82 +1,152 @@
-from flask import Blueprint, render_template, request, jsonify, current_app
+import logging
+import threading
 from datetime import datetime
-from web.models import EncryptedCredential
-from web.database import db
+
+from flask import Blueprint, current_app, jsonify, redirect, render_template, request, session, url_for
+
 from kms.kms_manager import KMSManager
+from web.database import db
+from web.models import MAX_CADENCE_DAYS, MIN_CADENCE_DAYS, EncryptedCredential
+from web.services.email_notifier import is_configured as smtp_configured
+from web.services.email_notifier import send_welcome_email
 from web.services.google_login import GoogleLogin
+
+logger = logging.getLogger(__name__)
 
 form_bp = Blueprint("form", __name__)
 kms_manager = KMSManager()
 
+# dev/test account — bypasses Selenium + KMS entirely
+TEST_EMAIL = "test@vt.edu"
+TEST_PASSWORD = "testuser"
+
+
 def get_progress_store():
-    """Ensure progress tracking is shared across routes."""
+    """Get the shared progress dict (lives on the app object)."""
     if not hasattr(current_app, "progress_updates"):
         current_app.progress_updates = {"step": 0, "error": ""}
     return current_app.progress_updates
 
+
 @form_bp.route("/", methods=["GET"])
 def index():
-    """Render the form page."""
+    """Show the login form."""
     progress_updates = get_progress_store()
-    progress_updates["step"] = 0  # Reset progress
-    progress_updates["error"] = ""  # Clear errors
+    progress_updates["step"] = 0
+    progress_updates["error"] = ""
     return render_template("form.html")
+
 
 @form_bp.route("/submit", methods=["POST"])
 def submit():
-    """Handle form submission and login process."""
+    """Kick off the login flow in a background thread."""
     progress_updates = get_progress_store()
-    print("Form submitted!")
 
-    try:
-        data = request.get_json()
-        vt_email = data.get("vt_email")
-        vt_username = data.get("vt_username")
-        vt_password = data.get("vt_password")
+    data = request.get_json()
+    vt_email = data.get("vt_email")
+    vt_username = data.get("vt_username")
+    vt_password = data.get("vt_password")
 
-        if not (vt_email and vt_username and vt_password):
-            raise ValueError("All fields are required")
-        if not vt_email.endswith("@vt.edu"):
-            raise ValueError("Invalid Virginia Tech email address")
+    if not (vt_email and vt_username and vt_password):
+        return jsonify({"error": "All fields are required"}), 400
+    if not vt_email.endswith("@vt.edu"):
+        return jsonify({"error": "Invalid Virginia Tech email address"}), 400
 
-        print("Attempting to log in...")
-        google_login = GoogleLogin()
-        progress_updates["step"] = 2
-        login_result = google_login.login(vt_email, vt_username, vt_password)
+    if vt_email == TEST_EMAIL and vt_password == TEST_PASSWORD:
+        logger.info("Test user login — bypassing Selenium and KMS")
+        session["authenticated_email"] = vt_email
 
-        if login_result["success"]:
-            progress_updates["step"] = 4
-            plaintext_credentials = f"{vt_email},{vt_username},{vt_password}"
-            encrypted_credentials = kms_manager.encrypt(plaintext_credentials)
-
-            existing_credential = EncryptedCredential.query.filter_by(vt_email=vt_email).first()
-            if existing_credential:
-                existing_credential.encrypted_key = encrypted_credentials
-                existing_credential.last_login = datetime.utcnow()
-                db.session.commit()
-                message = "Credentials updated successfully!"
-            else:
-                new_credential = EncryptedCredential(
+        existing = EncryptedCredential.query.filter_by(vt_email=vt_email).first()
+        is_new_account = existing is None
+        if existing:
+            existing.last_login = datetime.utcnow()
+            db.session.commit()
+        else:
+            db.session.add(
+                EncryptedCredential(
                     vt_email=vt_email,
-                    encrypted_key=encrypted_credentials,
+                    encrypted_key="TEST_ACCOUNT_NO_REAL_CREDENTIALS",
                     created_at=datetime.utcnow(),
                     last_login=datetime.utcnow(),
                 )
-                db.session.add(new_credential)
+            )
+            db.session.commit()
+
+        if is_new_account and smtp_configured():
+            cred = EncryptedCredential.query.filter_by(vt_email=vt_email).first()
+            if send_welcome_email(vt_email, cred.login_cadence_days):
+                cred.welcome_email_sent = True
                 db.session.commit()
-                message = "Credentials encrypted and saved successfully!"
 
-            return jsonify({"message": message, "redirect_url": f"/dashboard?email={vt_email}"})
+        progress_updates["step"] = 4
+        progress_updates["error"] = ""
+        return jsonify({"message": "Login started"})
 
-        else:
-            print(f"Login failed: {login_result['error']}")
-            progress_updates["step"] = 5
-            progress_updates["error"] = login_result["error"]
-            print(f"Updated progress error: {progress_updates['error']}")  # Debugging output
-            return jsonify({"error": login_result["error"]}), 401
+    session["authenticated_email"] = vt_email
+    progress_updates["step"] = 1
+    progress_updates["error"] = ""
+
+    app = current_app._get_current_object()
+
+    def run_login():
+        with app.app_context():
+            try:
+                google_login = GoogleLogin()
+                progress_updates["step"] = 2
+                login_result = google_login.login(vt_email, vt_username, vt_password)
+
+                if login_result["success"]:
+                    progress_updates["step"] = 4
+                    plaintext = f"{vt_email}|{vt_username}|{vt_password}"
+                    encrypted = kms_manager.encrypt(plaintext)
+
+                    existing = EncryptedCredential.query.filter_by(vt_email=vt_email).first()
+                    is_new_account = existing is None
+                    if existing:
+                        existing.encrypted_key = encrypted
+                        existing.last_login = datetime.utcnow()
+                        db.session.commit()
+                    else:
+                        new_cred = EncryptedCredential(
+                            vt_email=vt_email,
+                            encrypted_key=encrypted,
+                            created_at=datetime.utcnow(),
+                            last_login=datetime.utcnow(),
+                        )
+                        db.session.add(new_cred)
+                        db.session.commit()
+
+                    if is_new_account and smtp_configured():
+                        cred = EncryptedCredential.query.filter_by(vt_email=vt_email).first()
+                        if send_welcome_email(vt_email, cred.login_cadence_days):
+                            cred.welcome_email_sent = True
+                            db.session.commit()
+                else:
+                    progress_updates["step"] = 5
+                    progress_updates["error"] = login_result["error"]
+
+            except Exception as e:
+                progress_updates["step"] = 5
+                progress_updates["error"] = str(e)
+
+    thread = threading.Thread(target=run_login, daemon=True)
+    thread.start()
+
+    return jsonify({"message": "Login started"})
 
 
-    except Exception as e:
-        progress_updates["step"] = 5
-        progress_updates["error"] = str(e)
-        return jsonify({"error": str(e)}), 400
+@form_bp.route("/privacy", methods=["GET"])
+def privacy():
+    """Public privacy policy page (no auth required)."""
+    return render_template(
+        "privacy.html",
+        min_cadence=MIN_CADENCE_DAYS,
+        max_cadence=MAX_CADENCE_DAYS,
+    )
+
+
+@form_bp.route("/logout", methods=["GET"])
+def logout():
+    """Clear the session and send them back to the form."""
+    session.clear()
+    return redirect(url_for("form.index"))

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}Privacy Policy — VT Email Saver{% endblock %}
+
+{% block meta %}
+    <meta name="description" content="Privacy policy for Virginia Tech Email Saver.">
+{% endblock %}
+
+{% block content %}
+    <main id="main-container" style="max-width: 720px; padding: 3rem 1.5rem;">
+        <div class="card-glass" style="text-align: left; padding: 2rem;">
+            <h2 style="margin-top: 0;">Privacy Policy</h2>
+            {% include "partials/privacy_body.html" %}
+            <p style="margin-top: 2rem; text-align: center;">
+                <a href="{{ url_for('form.index') }}" style="color: var(--orange);">&larr; Back to VT Email Saver</a>
+            </p>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <small>
+            Created by <a href="https://github.com/tfeuerbach" target="_blank" rel="noopener noreferrer">Thomas Feuerbach</a> |
+            <a href="https://github.com/tfeuerbach/virginiatech-email-saver" target="_blank" rel="noopener noreferrer">View Source on GitHub</a>
+        </small>
+    </footer>
+{% endblock %}

@@ -1,28 +1,44 @@
-from flask import Blueprint, request, jsonify, current_app
+import logging
+
+from flask import Blueprint, current_app, jsonify, request, session
+
+from web.csrf import csrf
+
+logger = logging.getLogger(__name__)
 
 progress_bp = Blueprint("progress", __name__)
 
+
 def get_progress_store():
-    """Ensure progress tracking is consistent across all modules."""
+    """Get the shared progress dict (lives on the app object)."""
     if not hasattr(current_app, "progress_updates"):
         current_app.progress_updates = {"step": 0, "error": ""}
     return current_app.progress_updates
 
+
 @progress_bp.route("/update_progress", methods=["POST"])
+@csrf.exempt
 def update_progress():
-    """Update the login progress step."""
+    """Bump the progress step (only moves forward, never backward).
+
+    Exempt from CSRF — called server-to-server by google_login.py.
+    """
     progress_updates = get_progress_store()
     step = request.json.get("step", 0)
-    
+
     if step > progress_updates["step"]:
         progress_updates["step"] = step
 
-    print(f"Progress updated to step: {progress_updates['step']}")  # Ensure this prints
+    logger.debug("Progress updated to step: %s", progress_updates["step"])
     return jsonify({"status": "updated", "current_step": progress_updates["step"]})
+
 
 @progress_bp.route("/get_progress", methods=["GET"])
 def get_progress():
-    """Retrieve the current login progress."""
+    """Return current login progress for the polling frontend."""
+    if not session.get("authenticated_email"):
+        return jsonify({"error": "Not authenticated"}), 401
+
     progress_updates = get_progress_store()
-    print(f"Current progress: {progress_updates}")  # Ensure this prints
+    logger.debug("Current progress: %s", progress_updates)
     return jsonify(progress_updates)

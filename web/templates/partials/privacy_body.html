@@ -1,0 +1,60 @@
+<p class="modal-updated">Last updated: February 18, 2026</p>
+
+<h3>What this is</h3>
+<p>I originally built VT Email Saver as a tool for myself so I didn't
+need to worry about relogging every couple of months. I had a couple
+friends lose their access to VT Google services and decided to share
+it publicly to help other Virginia Tech students and alumni keep their
+university Gmail accounts from being deactivated. Every line of code
+is on <a href="https://github.com/tfeuerbach/virginiatech-email-saver"
+target="_blank" rel="noopener noreferrer"
+style="color: var(--orange);">GitHub</a> &mdash; you can audit it
+yourself.</p>
+
+<h3>What data I collect</h3>
+<ul>
+    <li><strong>VT email address</strong> &mdash; stored as a plaintext account identifier. This is visible to the site administrator but is only used to identify your account and log in on your behalf.</li>
+    <li><strong>VT password</strong> &mdash; encrypted with AWS KMS before it touches the database. The plaintext is never written to disk or logged. It is only decrypted momentarily by the automated login system at login time and discarded immediately after.</li>
+    <li><strong>Phone number</strong> (optional) &mdash; only stored if you opt in to SMS reminders. Shared with Twilio solely for delivering text messages.</li>
+    <li><strong>Notification email</strong> (optional) &mdash; only stored if you choose to receive reminders at a different address.</li>
+</ul>
+
+<h3>How I use your data</h3>
+<ul>
+    <li>Periodically log in to your VT Gmail via an automated browser session to prevent account deactivation.</li>
+    <li>Send you reminders (email and/or SMS) before each scheduled login so you can approve the Duo 2FA push.</li>
+</ul>
+<p>The automated session <strong>only</strong> logs in to keep your account active &mdash; it does not open, read, or interact with any emails, files, or account data. Your password is never visible to me; I can see your email address as an account identifier but have no access to your VT account itself.</p>
+
+<h3>SMS notifications</h3>
+<ul>
+    <li>You may opt in to receive automated SMS login reminders from VT Email Saver.</li>
+    <li>Messages are sent approximately 1 minute before each scheduled login attempt.</li>
+    <li>Message frequency varies based on your chosen login cadence ({{ min_cadence }}&ndash;{{ max_cadence }} messages per {{ max_cadence }}-day period).</li>
+    <li>Standard message and data rates may apply.</li>
+    <li>Reply <strong>STOP</strong> to unsubscribe at any time.</li>
+    <li>Your phone number is shared with <a href="https://www.twilio.com/legal/privacy" target="_blank" rel="noopener noreferrer" style="color: var(--orange);">Twilio</a> for message delivery and is not used for any other purpose.</li>
+</ul>
+
+<h3>Data security</h3>
+<ul>
+    <li>Credentials are encrypted using <strong>AWS Key Management Service (KMS)</strong>. Encryption keys live in Amazon's hardware security modules and never leave AWS.</li>
+    <li>All traffic is served over HTTPS via Cloudflare.</li>
+    <li>Session cookies are HTTP-only and same-site restricted.</li>
+</ul>
+
+<h3>Data retention &amp; deletion</h3>
+<p>Your data is retained only while your account exists. You can delete your account and all associated data at any time from the dashboard. When you do, your encrypted credentials, phone number, and notification preferences are permanently removed from the database.</p>
+
+<h3>Third-party services</h3>
+<ul>
+    <li><strong>AWS KMS</strong> &mdash; credential encryption</li>
+    <li><strong>AWS SES</strong> &mdash; email delivery</li>
+    <li><strong>Twilio</strong> &mdash; SMS delivery (only if you opt in)</li>
+    <li><strong>Cloudflare</strong> &mdash; DNS and tunnel</li>
+</ul>
+<p>I don't use any analytics, tracking pixels, or advertising services.</p>
+
+<h3>Contact</h3>
+<p>Questions, concerns, or feedback? Feel free to
+<a href="https://github.com/tfeuerbach/virginiatech-email-saver/issues" target="_blank" rel="noopener noreferrer" style="color: var(--orange);">open an issue on GitHub</a>.</p>

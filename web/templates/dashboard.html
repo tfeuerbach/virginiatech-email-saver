@@ -1,46 +1,319 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-    <script>
-        // Function to format the UTC datetime into local timezone
-        function formatDateTime(utcDateTime) {
-            const localDate = new Date(utcDateTime);
-            return localDate.toLocaleString(undefined, {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-            });
-        }
+{% extends "base.html" %}
 
-        // Format the displayed timestamps
-        document.addEventListener("DOMContentLoaded", function () {
-            const lastLogin = document.getElementById("last-login");
-            const nextLogin = document.getElementById("next-login");
+{% block meta %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+{% endblock %}
 
-            if (lastLogin && lastLogin.dataset.time) {
-                lastLogin.textContent = formatDateTime(lastLogin.dataset.time);
-            }
+{% block title %}Dashboard — VT Email Saver{% endblock %}
 
-            if (nextLogin && nextLogin.dataset.time) {
-                nextLogin.textContent = formatDateTime(nextLogin.dataset.time);
-            }
-        });
-    </script>
-</head>
-<body>
-    <div class="container">
-        <h1>Dashboard</h1>
-        <p><strong>Email:</strong> {{ vt_email }}</p>
-        <p><strong>Last Login:</strong> <span id="last-login" data-time="{{ last_login }}"></span></p>
-        <p><strong>Next Login:</strong> <span id="next-login" data-time="{{ next_login }}"></span></p>
+{% block content %}
+<div class="dash">
+    <!-- Top bar -->
+    <header class="dash-topbar">
+        <h1 class="dash-title">
+            <i class="bi bi-grid-1x2" aria-hidden="true"></i>
+            Dashboard
+        </h1>
+        <div class="dash-topbar-right">
+            <span class="dash-user"><i class="bi bi-person-circle" aria-hidden="true"></i> {{ vt_email }}</span>
+            <a href="/logout" class="btn-logout" aria-label="Log out">Log out</a>
+        </div>
+    </header>
+
+    <!-- At-a-glance status bar -->
+    <div class="dash-card dash-overview">
+        <div class="dash-overview-stat">
+            <div class="dash-stat-icon"><i class="bi bi-shield-lock" aria-hidden="true"></i></div>
+            <div class="dash-stat-body">
+                <span class="dash-stat-label">Auto-login</span>
+                {% if scheduler_running %}
+                    <span class="status-pill active">Active</span>
+                {% else %}
+                    <span class="status-pill inactive">Inactive</span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="dash-overview-divider"></div>
+        <div class="dash-overview-stat">
+            <div class="dash-stat-icon"><i class="bi bi-clock-history" aria-hidden="true"></i></div>
+            <div class="dash-stat-body">
+                <span class="dash-stat-label">Last Login</span>
+                <span class="dash-stat-value" id="last-login" data-time="{{ last_login }}">—</span>
+            </div>
+        </div>
+        <div class="dash-overview-divider"></div>
+        <div class="dash-overview-stat">
+            <div class="dash-stat-icon"><i class="bi bi-calendar-event" aria-hidden="true"></i></div>
+            <div class="dash-stat-body">
+                <span class="dash-stat-label">Next Login</span>
+                <span class="dash-stat-value" id="next-login" data-time="{{ next_login }}">—</span>
+            </div>
+        </div>
+        <div class="dash-overview-divider"></div>
+        <div class="dash-overview-stat">
+            <div class="dash-stat-icon"><i class="bi bi-globe2" aria-hidden="true"></i></div>
+            <div class="dash-stat-body">
+                <span class="dash-stat-label">Timezone</span>
+                <span class="dash-stat-value" id="tz-display">
+                    <span id="tz-display-text">{{ timezone_label or '' }}</span>
+                    <button id="tz-change-btn" class="btn-tz-change" title="Change timezone">change</button>
+                </span>
+                <div id="tz-edit" class="tz-edit" style="display: none;">
+                    <select id="tz-select" class="preferred-select preferred-select--tz">
+                        {% for tz_val, tz_lbl in timezone_choices %}
+                            <option value="{{ tz_val }}" {% if timezone == tz_val %}selected{% endif %}>{{ tz_lbl }}</option>
+                        {% endfor %}
+                    </select>
+                    <span class="tz-edit-actions">
+                        <button id="tz-save-btn" class="btn-tz-save">Save</button>
+                        <button id="tz-cancel-btn" class="btn-tz-cancel">Cancel</button>
+                    </span>
+                </div>
+            </div>
+        </div>
     </div>
-</body>
-</html>
+
+    <!-- Quick links -->
+    <div class="dash-quicklinks">
+        <a href="https://mail.google.com/a/vt.edu" target="_blank" rel="noopener noreferrer" class="dash-quicklink">
+            <i class="bi bi-envelope-open" aria-hidden="true"></i>
+            <span>VT Gmail</span>
+        </a>
+        <a href="https://drive.google.com/a/vt.edu" target="_blank" rel="noopener noreferrer" class="dash-quicklink">
+            <i class="bi bi-cloud" aria-hidden="true"></i>
+            <span>Google Drive</span>
+        </a>
+        <a href="https://myaccount.google.com/?authuser={{ vt_email }}" target="_blank" rel="noopener noreferrer" class="dash-quicklink">
+            <i class="bi bi-person-gear" aria-hidden="true"></i>
+            <span>Google Account</span>
+        </a>
+    </div>
+
+    <!-- Login Cadence -->
+    <div class="dash-card" id="cadence-card">
+        <h2 class="dash-card-title"><i class="bi bi-speedometer2" aria-hidden="true"></i> Login Cadence</h2>
+        <p class="dash-card-desc">How often should we log in to keep your account active?</p>
+
+        <div class="cadence-control">
+            <label for="cadence-slider" class="cadence-label">
+                Every <span id="cadence-value">{{ login_cadence_days }}</span> days
+            </label>
+            <input
+                type="range"
+                id="cadence-slider"
+                min="{{ min_cadence }}"
+                max="{{ max_cadence }}"
+                value="{{ login_cadence_days }}"
+                data-saved-cadence="{{ login_cadence_days }}"
+                step="1"
+            >
+            <div class="cadence-range-labels">
+                <span>{{ min_cadence }} day</span>
+                <span>{{ max_cadence }} days</span>
+            </div>
+            <button id="save-cadence-btn" class="btn-save-cadence" disabled>Save</button>
+            <p id="cadence-status" class="cadence-status"></p>
+        </div>
+
+        <hr class="dash-divider">
+
+        <h3 class="dash-subsection-title">Preferred Login Time</h3>
+        <p class="dash-card-desc">Pick a time of day so you know when to expect the Duo push. Uses your timezone above.</p>
+
+        <div class="preferred-time-control">
+            <div class="preferred-time-row">
+                <select id="preferred-hour" class="preferred-select preferred-select--time">
+                    <option value="" id="no-pref-option">No preference</option>
+                    {% for h in range(24) %}
+                        {% set ampm = "AM" if h < 12 else "PM" %}
+                        {% set h12 = h % 12 %}
+                        {% if h12 == 0 %}{% set h12 = 12 %}{% endif %}
+                        <option value="{{ h }}" {% if preferred_hour is not none and preferred_hour == h %}selected{% endif %}>
+                            {{ h12 }}:00 {{ ampm }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <button id="save-preferred-btn" class="btn-save-cadence" disabled>Save</button>
+            <p id="preferred-status" class="cadence-status"></p>
+        </div>
+    </div>
+
+    <!-- Notifications -->
+    <div class="dash-card" id="notifications-card">
+        <h2 class="dash-card-title"><i class="bi bi-bell" aria-hidden="true"></i> Notifications</h2>
+        <p class="dash-card-desc">Never miss a Duo push — get reminders before each login.</p>
+
+        <div class="notification-options">
+            <div class="notification-option">
+                <div class="notification-icon" aria-hidden="true"><i class="bi bi-calendar3"></i></div>
+                <div class="notification-detail">
+                    <strong>Calendar Event</strong>
+                    <span>Recurring every {{ login_cadence_days }} days with 1hr &amp; 15min alarms</span>
+                </div>
+                <a href="/download_calendar" class="btn-calendar" aria-label="Download calendar file" title="Download .ics file">
+                    <i class="bi bi-download" aria-hidden="true"></i> .ics
+                </a>
+            </div>
+
+            <div class="notification-option">
+                <div class="notification-icon" aria-hidden="true"><i class="bi bi-envelope"></i></div>
+                <div class="notification-detail">
+                    <strong>Email Reminder</strong>
+                    <span>
+                        {% if email_notifications_enabled %}
+                            Sent the day before each scheduled login
+                        {% else %}
+                            Not configured — <a href="https://github.com/tfeuerbach/virginiatech-email-saver#email-notifications" target="_blank" rel="noopener noreferrer" style="color: var(--orange);">set up SMTP</a>
+                        {% endif %}
+                    </span>
+                </div>
+                {% if email_notifications_enabled %}
+                    <label class="sms-toggle" for="email-opt-in-toggle" aria-label="Toggle email reminders">
+                        <input type="checkbox" id="email-opt-in-toggle" {% if email_opt_in %}checked{% endif %}>
+                        <span class="sms-toggle-slider"></span>
+                    </label>
+                {% else %}
+                    <span class="status-pill inactive" style="flex-shrink: 0;">Off</span>
+                {% endif %}
+            </div>
+
+            <div class="notification-option sms-option">
+                <div class="notification-icon" aria-hidden="true"><i class="bi bi-chat-dots"></i></div>
+                <div class="notification-detail">
+                    <strong>Text Message</strong>
+                    <span>Get an SMS before each scheduled login</span>
+                </div>
+                <label class="sms-toggle" for="sms-opt-in-toggle" aria-label="Toggle SMS reminders">
+                    <input type="checkbox" id="sms-opt-in-toggle" {% if sms_opt_in %}checked{% endif %}>
+                    <span class="sms-toggle-slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <div id="sms-opt-in-panel" class="sms-opt-in-panel" {% if not sms_opt_in %}style="display: none;"{% endif %}>
+            <div class="sms-phone-row">
+                <label for="sms-phone-input" class="sms-phone-label">Phone number</label>
+                <input type="tel" id="sms-phone-input" class="sms-phone-input"
+                       value="{{ phone_number }}" placeholder="(555) 123-4567"
+                       maxlength="16" autocomplete="tel">
+            </div>
+            <div class="sms-consent-text">
+                <p>By enabling text notifications you consent to receive automated
+                SMS reminders from <strong>VT Email Saver</strong>.</p>
+                <ul class="consent-details">
+                    <li>Sent approximately <strong>1 minute before</strong> each scheduled login</li>
+                    <li>Frequency depends on your cadence ({{ min_cadence }}&ndash;{{ max_cadence }} msgs per {{ max_cadence }} days)</li>
+                </ul>
+                <p class="consent-fine-print">Msg &amp; data rates may apply.</p>
+                <div class="consent-actions">
+                    <span>Reply <strong>STOP</strong> to unsubscribe</span>
+                    <span class="consent-sep">&middot;</span>
+                    <a href="#" id="open-privacy-modal" class="privacy-link">Privacy Policy</a>
+                </div>
+            </div>
+            <button id="sms-save-btn" class="btn-sms-save">Save</button>
+            <p id="sms-status" class="cadence-status"></p>
+        </div>
+
+        <div id="email-settings-panel" {% if not email_opt_in %}style="display: none;"{% endif %}>
+            <div class="notification-email-row">
+                <span class="notification-email-label">Send to</span>
+                <span id="notif-email-display" class="notification-email-value">{{ notification_email }}</span>
+                <input type="email" id="notif-email-input" class="notification-email-input" value="{{ notification_email }}" style="display: none;" placeholder="you@example.com">
+                <button id="notif-email-edit" class="btn-notif-edit" title="Change notification email">change</button>
+                <button id="notif-email-save" class="btn-notif-save" style="display: none;">Save</button>
+                <button id="notif-email-cancel" class="btn-notif-cancel" style="display: none;">Cancel</button>
+            </div>
+            <p id="notif-email-status" class="cadence-status"></p>
+        </div>
+
+        <p class="notification-hint">
+            The .ics file works with Apple Calendar, Google Calendar, and Outlook.
+            Re-download if you change your cadence.
+        </p>
+    </div>
+
+    <!-- Scheduler (compact bar) -->
+    <div class="dash-card dash-scheduler-bar" id="scheduler-card">
+        <h2 class="dash-card-title"><i class="bi bi-robot" aria-hidden="true"></i> Scheduler</h2>
+        <p class="dash-scheduler-hint">Scans hourly for logins due within the next 60 minutes</p>
+        <div class="dash-scheduler-cols">
+            {% if scheduler_next_check %}
+            <div class="dash-scheduler-col">
+                <span class="dash-scheduler-label">Next Scan</span>
+                <span class="dash-scheduler-value" id="scheduler-next-check" data-time="{{ scheduler_next_check }}">—</span>
+            </div>
+            {% endif %}
+            {% if scheduler_last_check %}
+            <div class="dash-scheduler-col">
+                <span class="dash-scheduler-label">Last Scan</span>
+                <span class="dash-scheduler-value" id="scheduler-last-check" data-time="{{ scheduler_last_check }}">—</span>
+            </div>
+            {% endif %}
+            {% if scheduler_last_result %}
+            <div class="dash-scheduler-col">
+                <span class="dash-scheduler-label">Last Result</span>
+                <span class="dash-scheduler-value">{{ scheduler_last_result }}</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Remove Account -->
+    <div class="dash-card dash-card-danger" id="danger-card">
+        <h2 class="dash-card-title"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> Remove Account</h2>
+        <p class="dash-card-desc">
+            Remove your account and wipe all stored data. You can always come back
+            &mdash; just log in again and your account will be re-created.
+        </p>
+
+        <div id="swipe-track" class="swipe-track">
+            <div id="swipe-thumb" class="swipe-thumb" role="slider" aria-label="Slide to remove account" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                <i class="bi bi-chevron-right" aria-hidden="true"></i>
+            </div>
+            <span class="swipe-label">Slide to remove</span>
+            <div id="swipe-fill" class="swipe-fill"></div>
+        </div>
+
+        <div id="delete-confirm" class="delete-confirm" style="display: none;">
+            <p>This will permanently remove your encrypted credentials, phone number,
+            and notification preferences. All scheduled logins and alerts stop immediately.</p>
+            <div class="delete-confirm-actions">
+                <button id="delete-confirm-yes" class="btn-delete-confirm">Yes, remove my account</button>
+                <button id="delete-confirm-cancel" class="btn-delete-cancel">Never mind</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="dash-footer">
+        <a href="https://github.com/tfeuerbach/virginiatech-email-saver" target="_blank" rel="noopener noreferrer">View Source</a>
+        <span class="dashboard-footer-sep">&middot;</span>
+        <a href="#" id="footer-privacy-link" class="privacy-link">Privacy Policy</a>
+        <span class="dashboard-footer-sep">&middot;</span>
+        <a href="https://buymeacoffee.com/tfeuerbach" target="_blank" rel="noopener noreferrer" class="btn-coffee-inline" aria-label="Buy me a coffee">
+            <i class="bi bi-cup-hot" aria-hidden="true"></i>
+            Buy me a coffee
+        </a>
+    </footer>
+</div>
+
+<!-- Privacy Policy Modal -->
+<div id="privacy-modal" class="modal-overlay" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="privacy-modal-title">
+    <div class="modal-content card-glass">
+        <div class="modal-header">
+            <h2 id="privacy-modal-title">Privacy Policy</h2>
+            <button id="close-privacy-modal" class="modal-close" aria-label="Close">&times;</button>
+        </div>
+        <div class="modal-body">
+            {% include "partials/privacy_body.html" %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

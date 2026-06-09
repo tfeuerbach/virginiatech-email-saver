@@ -1,0 +1,6 @@
+Your VT Email Saver login is scheduled for tomorrow.
+
+Scheduled login: {{ next_login }}
+Cadence: every {{ cadence_days }} days
+
+Keep your phone nearby to approve the Duo 2FA push notification.
