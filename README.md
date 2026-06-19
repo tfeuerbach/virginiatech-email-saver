@@ -8,7 +8,7 @@
   <img src="https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker">
   <img src="https://img.shields.io/badge/AWS_KMS-Encryption-FF9900?style=for-the-badge" alt="AWS KMS">
   <img src="https://img.shields.io/badge/Gunicorn-23.0-499848?style=for-the-badge&logo=gunicorn&logoColor=white" alt="Gunicorn">
-  <img src="https://img.shields.io/badge/Bootstrap-5.3-7952B3?style=for-the-badge&logo=bootstrap&logoColor=white" alt="Bootstrap">
+  <img src="https://img.shields.io/badge/Bootstrap_Icons-1.11-7952B3?style=for-the-badge&logo=bootstrap&logoColor=white" alt="Bootstrap Icons">
 </p>
 
 Keep your Virginia Tech Gmail account active with automated logins. This Flask-based web app securely stores your credentials, automates the entire VT SSO + Duo 2FA login flow, and lets you control how often it runs.
@@ -69,7 +69,10 @@ graph TB
 
     subgraph AWS["Amazon Web Services"]
         KMS["🔐 KMS<br/>encryption keys"]
-        SES["📧 SES<br/>email reminders"]
+    end
+
+    subgraph SMTP["SMTP Provider"]
+        Email["📧 Email<br/>login reminders"]
     end
 
     subgraph Twilio["Twilio"]
@@ -89,11 +92,11 @@ graph TB
 
     Scheduler -->|query due accounts| DB
     Scheduler -->|decrypt credentials| KMS
-    Scheduler -->|day-before reminder| SES
+    Scheduler -->|day-before reminder| Email
     Scheduler -->|1-min SMS heads-up| SMS
     Scheduler -->|automate login| Chrome
 
-    SES -.->|📧 email| User
+    Email -.->|📧 email| User
     SMS -.->|📲 text| User
     Chrome --> SSO --> Google --> Duo
     Duo -.->|📱 push| User
@@ -105,9 +108,10 @@ graph TB
 
 - **Automated Gmail Logins** — Selenium drives a headless Chrome instance through VT's SSO portal, Google sign-in, and Duo 2FA prompts.
 - **Configurable Login Cadence** — Set how often the app logs in on your behalf (1–90 days, defaults to 25) via a dashboard slider.
-- **Background Scheduler** — A daemon thread checks daily for accounts due for a login and runs them automatically.
+- **Preferred Login Time** — Pick your preferred hour and timezone for scheduled logins. Timezone is auto-detected from your browser and can be overridden from the dashboard.
+- **Background Scheduler** — A daemon thread runs hourly clock-aligned checks, firing overdue logins immediately and scheduling upcoming ones with precise timers.
 - **Login Reminders** — Optional email notification the day before each login, toggleable on/off from the dashboard. Also includes a downloadable recurring `.ics` calendar event (Apple Calendar, Google Calendar, Outlook).
-- **SMS Notifications** — Opt-in text message reminders via Twilio, sent ~1 minute before each scheduled login.
+- **SMS Notifications** — Opt-in text message reminders via Twilio, sent ~1 minute before each scheduled login so you're ready for the Duo push.
 - **Custom Notification Email** — Use a different email address for login reminders instead of your VT email.
 - **Account Removal** — Remove your account and all stored data with a swipe-to-confirm gesture. Log in again any time to re-register.
 - **Privacy Policy** — In-app privacy policy covering data handling, third-party services, and opt-out instructions.
@@ -132,10 +136,10 @@ Your credentials are **never stored in plaintext**. The source code is fully ope
 |-------|-----------|
 | Backend | Flask, Gunicorn, SQLAlchemy |
 | Database | PostgreSQL or SQLite |
-| Encryption | AWS KMS via `aws-encryption-sdk` |
-| Notifications | AWS SES (email), Twilio (SMS), iCalendar (.ics) |
+| Encryption | AWS KMS via `boto3` |
+| Notifications | SMTP (email), Twilio (SMS), iCalendar (.ics) |
 | Browser Automation | Selenium + headless Chrome |
-| Frontend | HTML/CSS/JS, Bootstrap 5, Lottie animations |
+| Frontend | HTML/CSS/JS, Bootstrap Icons, Lottie animations |
 | Infrastructure | Docker Compose, Cloudflare Tunnel |
 
 ## Self-Hosting
@@ -188,8 +192,8 @@ The app starts on `http://localhost:5000` with PostgreSQL and Gunicorn. To bring
 If you'd rather skip Docker, you'll need Python 3.11+ and Google Chrome installed on your machine.
 
 ```bash
-python3 -m venv .envs/vt_login
-source .envs/vt_login/bin/activate
+python3.11 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 flask --app web run
 ```
@@ -246,8 +250,8 @@ The app supports both **SQLite** (zero config) and **PostgreSQL** (production-li
 git clone https://github.com/tfeuerbach/virginiatech-email-saver.git
 cd virginiatech-email-saver
 cp .env.example .env          # fill in AWS KMS creds + SECRET_KEY
-python3 -m venv .envs/vt_login
-source .envs/vt_login/bin/activate
+python3.11 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 flask --app web run
 ```
@@ -283,10 +287,10 @@ See [DEPLOY.md](DEPLOY.md) for full production deployment instructions including
 docker compose exec web python -m pytest tests/ -v
 
 # Or locally with a virtual environment:
-pytest
+.venv/bin/pytest tests/ -v
 ```
 
-Covers unit tests (models, KMS encryption, authentication, CSRF, cadence validation) and integration tests (database operations).
+112 tests across 8 test files covering models, routes (dashboard, form, schedule), CSRF protection, KMS encryption, scheduler logic, phone normalization, and database integration. Runs in ~1 second using in-memory SQLite — no external services needed.
 
 ### Linting
 
@@ -298,6 +302,10 @@ ruff check --fix .    # lint + auto-fix
 ruff format .         # format
 ruff format --check . # check formatting without changes
 ```
+
+### Pre-commit Hook
+
+A git pre-commit hook runs `ruff check` and `ruff format --check` before every commit. It's installed at `.git/hooks/pre-commit` and uses `.venv/bin/ruff` if available.
 
 ### CI
 
