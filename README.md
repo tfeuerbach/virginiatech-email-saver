@@ -11,9 +11,9 @@
   <img src="https://img.shields.io/badge/Bootstrap_Icons-1.11-7952B3?style=for-the-badge&logo=bootstrap&logoColor=white" alt="Bootstrap Icons">
 </p>
 
-Keep your Virginia Tech Gmail account active with automated logins. This Flask-based web app securely stores your credentials, automates the entire VT SSO + Duo 2FA login flow, and lets you control how often it runs.
+Keep your Virginia Tech Gmail account active with automated logins. This Flask-based web app securely stores your credentials, automates the VT SSO + Duo verification flow, and lets you control how often it runs.
 
-**Live at [vtemailsaver.tfeuerbach.dev](https://vtemailsaver.tfeuerbach.dev)** — or self-host it yourself if you'd rather not trust a third party with your credentials. Everything you need is in this repo.
+**Live at [hokiesaver.tfeuerbach.dev](https://hokiesaver.tfeuerbach.dev/)** — or self-host it yourself if you'd rather not trust a third party with your credentials. Everything you need is in this repo.
 
 ## Architecture
 
@@ -31,7 +31,9 @@ sequenceDiagram
     You->>App: Submit email + password
     App->>Bot: Verify credentials via login
     Bot->>VT: SSO → Google sign-in → Duo
-    VT-->>You: 📱 Approve Duo push on phone
+    VT-->>App: Duo verification code
+    App-->>You: Show code on screen
+    You->>VT: Enter code in Duo Mobile
     Bot-->>App: Login succeeded
     App->>AWS: Encrypt credentials
     App->>DB: Store encrypted
@@ -41,12 +43,14 @@ sequenceDiagram
     rect rgba(232, 119, 34, 0.08)
     Note over You,DB: Every N days (automated)
     App-->>You: 📧 Reminder email (day before)
-    App-->>You: 📲 SMS reminder (~1 min before)
+    App-->>You: 📲 SMS heads-up (~1 min before)
     App->>DB: Query accounts due for login
     App->>AWS: Decrypt credentials
     App->>Bot: Drive login flow
     Bot->>VT: SSO → Google sign-in → Duo
-    VT-->>You: 📱 Approve Duo push on phone
+    VT-->>App: Duo verification code
+    App-->>You: 📲 / 📧 Deliver Duo code
+    You->>VT: Enter code in Duo Mobile
     end
 ```
 
@@ -69,14 +73,11 @@ graph TB
 
     subgraph AWS["Amazon Web Services"]
         KMS["🔐 KMS<br/>encryption keys"]
-    end
-
-    subgraph SMTP["SMTP Provider"]
-        Email["📧 Email<br/>login reminders"]
+        SES["📧 SES / SMTP<br/>login reminders + Duo codes"]
     end
 
     subgraph Twilio["Twilio"]
-        SMS["📲 SMS<br/>text reminders"]
+        SMS["📲 SMS<br/>heads-up + Duo codes"]
     end
 
     subgraph VT["Virginia Tech"]
@@ -92,29 +93,31 @@ graph TB
 
     Scheduler -->|query due accounts| DB
     Scheduler -->|decrypt credentials| KMS
-    Scheduler -->|day-before reminder| Email
-    Scheduler -->|1-min SMS heads-up| SMS
+    Scheduler -->|day-before reminder| SES
+    Scheduler -->|SMS heads-up + Duo code| SMS
+    Scheduler -->|email Duo code| SES
     Scheduler -->|automate login| Chrome
 
-    Email -.->|📧 email| User
+    SES -.->|📧 email| User
     SMS -.->|📲 text| User
     Chrome --> SSO --> Google --> Duo
-    Duo -.->|📱 push| User
+    Duo -.->|🔢 verification code| Chrome
 ```
 
 </details>
 
 ## Features
 
-- **Automated Gmail Logins** — Selenium drives a headless Chrome instance through VT's SSO portal, Google sign-in, and Duo 2FA prompts.
+- **Automated Gmail Logins** — Selenium drives a headless Chrome instance through VT's SSO portal, Google sign-in, and Duo verification.
+- **Duo Verification Codes** — When Duo shows a numeric code, the app surfaces it on the processing page (first login) and/or delivers it by SMS/email during scheduled logins.
 - **Configurable Login Cadence** — Set how often the app logs in on your behalf (1–90 days, defaults to 25) via a dashboard slider.
-- **Preferred Login Time** — Pick your preferred hour and timezone for scheduled logins. Timezone is auto-detected from your browser and can be overridden from the dashboard.
+- **Preferred Login Time** — Pick your preferred hour and timezone for scheduled logins. Timezone can be set from the dashboard.
 - **Background Scheduler** — A daemon thread runs hourly clock-aligned checks, firing overdue logins immediately and scheduling upcoming ones with precise timers.
-- **Login Reminders** — Optional email notification the day before each login, toggleable on/off from the dashboard. Also includes a downloadable recurring `.ics` calendar event (Apple Calendar, Google Calendar, Outlook).
-- **SMS Notifications** — Opt-in text message reminders via Twilio, sent ~1 minute before each scheduled login so you're ready for the Duo push.
+- **Login Reminders** — Optional email notification the day before each login, toggleable from the dashboard. Also includes a downloadable recurring `.ics` calendar event (Apple Calendar, Google Calendar, Outlook).
+- **SMS Notifications** — Optional Twilio texts: a heads-up before login and the Duo verification code when it appears. Requires an explicit consent checkbox (unchecked by default).
 - **Custom Notification Email** — Use a different email address for login reminders instead of your VT email.
 - **Account Removal** — Remove your account and all stored data with a swipe-to-confirm gesture. Log in again any time to re-register.
-- **Privacy Policy** — In-app privacy policy covering data handling, third-party services, and opt-out instructions.
+- **Privacy & Terms** — Public privacy policy, terms of service, and SMS notification details pages.
 - **Dashboard** — View your last login, next scheduled login, scheduler status, and adjust all settings in one place.
 - **Modern UI** — Glassmorphism cards, gradient background, Rubik font, Lottie animations, and responsive layout.
 - **Production-Ready** — Gunicorn, PostgreSQL, Docker Compose, and Cloudflare Tunnel support.
@@ -137,14 +140,14 @@ Your credentials are **never stored in plaintext**. The source code is fully ope
 | Backend | Flask, Gunicorn, SQLAlchemy |
 | Database | PostgreSQL or SQLite |
 | Encryption | AWS KMS via `boto3` |
-| Notifications | SMTP (email), Twilio (SMS), iCalendar (.ics) |
+| Notifications | SMTP / AWS SES (email), Twilio (SMS), iCalendar (.ics) |
 | Browser Automation | Selenium + headless Chrome |
 | Frontend | HTML/CSS/JS, Bootstrap Icons, Lottie animations |
 | Infrastructure | Docker Compose, Cloudflare Tunnel |
 
 ## Self-Hosting
 
-Don't want to hand your credentials to a hosted service? Totally fair — that's why this repo exists. You can run the entire app yourself with a minimal setup and host it for yourself or your friends. **No email service, no SMS provider, no Cloudflare account needed.**
+Don't want to hand your credentials to a hosted service? Totally fair — that's why this repo exists. You can run the entire app yourself with a minimal setup. **No email service, no SMS provider, no Cloudflare account needed** for a basic local install.
 
 ### What you need
 
@@ -153,7 +156,9 @@ Don't want to hand your credentials to a hosted service? Totally fair — that's
 | AWS account with a KMS key | Encrypts your credentials at rest ([free tier](https://aws.amazon.com/kms/pricing/) covers 20,000 requests/month) |
 | Docker **or** Python 3.11+ & Google Chrome | Runs the app (Docker is easiest — it bundles Chrome for you) |
 
-That's it. Everything else — email reminders, SMS notifications, Cloudflare Tunnel, PostgreSQL — is completely optional. The app detects which services are configured and disables the rest gracefully.
+That's it. Everything else — email reminders, SMS notifications, Cloudflare Tunnel, PostgreSQL — is optional. The app detects which services are configured and disables the rest gracefully.
+
+> **Note:** Duo now requires entering a verification code (not just approving a push). For scheduled logins, enable email and/or SMS so the app can deliver that code to you. On first signup, the code is shown on the processing page.
 
 ### 1. Clone and configure
 
@@ -163,7 +168,7 @@ cd virginiatech-email-saver
 cp .env.example .env
 ```
 
-Open `.env` and fill in your AWS KMS credentials and a `SECRET_KEY`. You can ignore every other variable:
+Open `.env` and fill in your AWS KMS credentials and a `SECRET_KEY`. You can ignore every other variable for a minimal setup:
 
 ```env
 FLASK_ENV=development
@@ -206,11 +211,11 @@ Either way, open `http://localhost:5000`, add your VT account, and you're done.
 
 The dashboard has a **Download Calendar** button that gives you a recurring `.ics` file. Import it into Apple Calendar, Google Calendar, Outlook, or any iCalendar-compatible app and you'll get reminders before each scheduled login with built-in alerts at 1 hour and 15 minutes before — no email or SMS service required.
 
-When a login runs, just approve the Duo push on your phone.
+When a login runs, enter the Duo verification code from the processing page, email, or SMS into Duo Mobile.
 
 ### Optional: Email notifications
 
-If you want email reminders the day before each login (plus a welcome email when you first add your account), add SMTP credentials to your `.env`. Works with any SMTP provider — AWS SES, Gmail app passwords, SendGrid, Mailgun, etc.:
+If you want email reminders the day before each login (plus welcome emails and Duo codes for scheduled logins), add SMTP credentials to your `.env`. Works with any SMTP provider — AWS SES, Gmail app passwords, SendGrid, Mailgun, etc.:
 
 ```env
 SMTP_HOST=email-smtp.us-east-1.amazonaws.com
@@ -220,13 +225,14 @@ SMTP_PASSWORD=your-smtp-password
 SMTP_FROM_EMAIL=noreply@yourdomain.com
 SMTP_FROM_NAME=VT Email Saver
 SMTP_USE_TLS=true
+BASE_URL=https://yourdomain.com
 ```
 
 If `SMTP_HOST` is blank or missing, the app skips all email features. The dashboard will show email notifications as "Off" until configured.
 
 ### Optional: SMS notifications
 
-For text message reminders ~1 minute before each login, add Twilio credentials:
+For text heads-ups and Duo verification codes via Twilio:
 
 ```env
 TWILIO_ACCOUNT_SID=your-account-sid
@@ -234,7 +240,29 @@ TWILIO_AUTH_TOKEN=your-auth-token
 TWILIO_FROM_NUMBER=+1XXXXXXXXXX
 ```
 
-Same deal — leave these blank and SMS is simply disabled.
+Leave these blank and SMS is disabled. Users must explicitly opt in with an unchecked consent checkbox before texts are enabled.
+
+### Optional: Public HTTPS with Cloudflare Tunnel
+
+For production hosting without opening inbound ports:
+
+1. Create a Cloudflare Tunnel and public hostname pointing at `http://web:5000`.
+2. Add the tunnel token to `.env`:
+
+```env
+FLASK_ENV=production
+CLOUDFLARE_TUNNEL_TOKEN=your-tunnel-token
+BASE_URL=https://yourdomain.com
+DATABASE_URL=postgresql://postgres:yourpassword@db:5432/encrypted_credentials
+```
+
+3. Start with the tunnel profile:
+
+```bash
+docker compose --profile tunnel up --build -d
+```
+
+See [CONTEXT.md](CONTEXT.md) for a fuller deployment checklist (Gunicorn settings, scheduler notes, env var reference).
 
 ## Contributing
 
@@ -269,8 +297,6 @@ FLASK_ENV=production
 DATABASE_URL=postgresql://postgres:yourpassword@db:5432/encrypted_credentials
 ```
 
-See [DEPLOY.md](DEPLOY.md) for full production deployment instructions including Cloudflare Tunnel setup.
-
 ### Development vs. Production
 
 | | Development | Production |
@@ -290,7 +316,7 @@ docker compose exec web python -m pytest tests/ -v
 .venv/bin/pytest tests/ -v
 ```
 
-112 tests across 8 test files covering models, routes (dashboard, form, schedule), CSRF protection, KMS encryption, scheduler logic, phone normalization, and database integration. Runs in ~1 second using in-memory SQLite — no external services needed.
+127 tests covering models, routes (dashboard, form, schedule), CSRF protection, KMS encryption, scheduler logic, Duo notify helpers, phone normalization, and database integration. Runs in ~1–2 seconds using in-memory SQLite — no external services needed.
 
 ### Linting
 
