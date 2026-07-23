@@ -31,12 +31,19 @@ def deliver_duo_code(credential, code: str) -> bool:
     """Send the Duo code through every channel the user has enabled."""
     sent = False
 
-    if credential.sms_opt_in and credential.phone_number and sms_notifier.is_configured():
-        if sms_notifier.send_duo_code(credential.phone_number, code):
-            sent = True
+    if (
+        credential.sms_opt_in
+        and credential.phone_number
+        and sms_notifier.is_configured()
+        and sms_notifier.send_duo_code(credential.phone_number, code)
+    ):
+        sent = True
 
-    if credential.email_opt_in and email_notifier.is_configured():
-        if email_notifier.send_duo_code(credential.effective_notification_email, code):
-            sent = True
+    if (
+        credential.email_opt_in
+        and email_notifier.is_configured()
+        and email_notifier.send_duo_code(credential.effective_notification_email, code)
+    ):
+        sent = True
 
     return sent

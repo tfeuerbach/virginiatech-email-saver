@@ -1,7 +1,8 @@
+import contextlib
 import logging
 import os
 import time
-from typing import Callable
+from collections.abc import Callable
 
 import requests
 from selenium import webdriver
@@ -76,10 +77,8 @@ class GoogleLogin:
             url = self.driver.current_url
             title = self.driver.title
             body = ""
-            try:
+            with contextlib.suppress(Exception):
                 body = (self.driver.find_element(By.TAG_NAME, "body").text or "")[:400]
-            except Exception:
-                pass
             logger.error(
                 "Login stuck (%s): url=%s title=%r body_snippet=%r",
                 context,
@@ -87,11 +86,9 @@ class GoogleLogin:
                 title,
                 body.replace("\n", " | "),
             )
-            try:
+            with contextlib.suppress(Exception):
                 self.driver.save_screenshot("/tmp/login_failure.png")
                 logger.error("Saved failure screenshot to /tmp/login_failure.png")
-            except Exception:
-                pass
         except Exception as e:
             logger.error("Could not capture page state (%s): %s", context, e)
 

@@ -1,7 +1,6 @@
 from datetime import datetime
 from unittest.mock import patch
 
-from web.database import db
 from web.models import EncryptedCredential
 from web.services.duo_notify import channels_after_change, has_duo_code_channel
 
