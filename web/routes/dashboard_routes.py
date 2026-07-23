@@ -23,6 +23,7 @@ from web.models import (
     SchedulerState,
 )
 from web.services import sms_notifier
+from web.services.duo_notify import channels_after_change, has_duo_code_channel
 from web.services.email_notifier import is_configured as smtp_configured
 from web.services.login_scheduler import next_login_time
 
@@ -49,6 +50,37 @@ kms_manager = KMSManager()
 
 def get_authenticated_email():
     return session.get("authenticated_email")
+
+
+@dashboard_bp.route("/sample-dashboard", methods=["GET"])
+def sample_dashboard():
+    return render_template(
+        "dashboard.html",
+        vt_email="hokie@vt.edu",
+        username="hokie",
+        last_login="June 15, 2026, 09:00 AM",
+        next_login="July 10, 2026, 09:00 AM",
+        login_cadence_days=25,
+        min_cadence=MIN_CADENCE_DAYS,
+        max_cadence=MAX_CADENCE_DAYS,
+        scheduler_running=True,
+        scheduler_next_check=None,
+        scheduler_last_check=None,
+        scheduler_last_result=None,
+        email_notifications_enabled=True,
+        email_opt_in=True,
+        notification_email="hokie@vt.edu",
+        has_custom_notification_email=False,
+        sms_opt_in=True,
+        phone_number="",
+        preferred_hour=9,
+        timezone="America/New_York",
+        timezone_label="Eastern",
+        timezone_choices=TIMEZONE_CHOICES,
+        sample_mode=True,
+        duo_code_channel_ok=True,
+        notifications_required=True,
+    )
 
 
 @dashboard_bp.route("/dashboard", methods=["GET"])
@@ -95,6 +127,8 @@ def dashboard():
         timezone=credential.timezone,
         timezone_label=tz_display(credential.timezone) if credential.timezone else None,
         timezone_choices=TIMEZONE_CHOICES,
+        duo_code_channel_ok=has_duo_code_channel(credential),
+        notifications_required=smtp_configured() or sms_notifier.is_configured(),
     )
 
 
@@ -276,6 +310,16 @@ def update_email_opt_in():
     if not credential:
         return jsonify({"error": "User not found"}), 404
 
+    if not opt_in and not channels_after_change(credential, email_opt_in=False):
+        return jsonify(
+            {
+                "error": (
+                    "Keep email reminders or enable text messages — "
+                    "you need a way to receive your Duo verification code."
+                )
+            }
+        ), 400
+
     credential.email_opt_in = opt_in
     db.session.commit()
 
@@ -377,12 +421,15 @@ def update_sms_preferences():
     data = request.get_json()
     opt_in = bool(data.get("sms_opt_in"))
     raw_phone = (data.get("phone_number") or "").strip()
+    consent_given = bool(data.get("sms_consent"))
 
     credential = EncryptedCredential.query.filter_by(vt_email=email).first()
     if not credential:
         return jsonify({"error": "User not found"}), 404
 
     if opt_in:
+        if not consent_given:
+            return jsonify({"error": "You must check the SMS consent box to enable text messages"}), 400
         phone = normalise_phone(raw_phone)
         if phone is None:
             return jsonify({"error": "Please enter a valid 10-digit US phone number"}), 400
@@ -400,6 +447,16 @@ def update_sms_preferences():
                 "sms_opt_in": True,
             }
         )
+
+    if not channels_after_change(credential, sms_opt_in=False, phone_number=None):
+        return jsonify(
+            {
+                "error": (
+                    "Keep text messages or enable email reminders — "
+                    "you need a way to receive your Duo verification code."
+                )
+            }
+        ), 400
 
     credential.sms_opt_in = False
     credential.phone_number = None

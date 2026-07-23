@@ -46,6 +46,9 @@ body {
 .how-it-works,
 .how-it-works p,
 .how-it-works li,
+.about-service,
+.about-service p,
+.about-service li,
 .site-footer,
 .site-footer a,
 .modal-overlay,
@@ -227,6 +230,11 @@ input.form-control[type="password"]:focus {
 
 input::placeholder {
     color: #999;
+    transition: opacity 0.2s;
+}
+
+input:focus::placeholder {
+    opacity: 0;
 }
 
 /* ===== Buttons ===== */
@@ -398,6 +406,51 @@ canvas {
     color: var(--text-secondary);
 }
 
+.duo-code-display {
+    margin-top: 1.25rem;
+    padding: 1rem 1.25rem;
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(232, 119, 34, 0.35);
+    text-align: center;
+}
+
+.duo-code-display.hidden {
+    display: none;
+}
+
+.duo-code-label {
+    margin: 0 0 0.35rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.duo-code-value {
+    margin: 0;
+    font-size: 2.75rem;
+    font-weight: 700;
+    letter-spacing: 0.35em;
+    color: var(--orange);
+}
+
+.duo-code-hint {
+    margin: 0.5rem 0 0;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.notification-warning {
+    margin: 0 0 1rem;
+    padding: 0.75rem 0.9rem;
+    border-radius: var(--radius-sm);
+    background: rgba(232, 119, 34, 0.15);
+    border: 1px solid rgba(232, 119, 34, 0.35);
+    color: var(--text-primary);
+    font-size: 0.85rem;
+}
+
 /* ===== Dashboard layout ===== */
 .dash {
     width: 100%;
@@ -407,6 +460,45 @@ canvas {
     display: flex;
     flex-direction: column;
     gap: 0.85rem;
+}
+
+.sample-banner {
+    background: rgba(232, 119, 34, 0.12);
+    border: 1px solid rgba(232, 119, 34, 0.3);
+    border-radius: var(--radius-sm);
+    padding: 0.6rem 1rem;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    text-align: center;
+}
+
+.sample-banner a {
+    color: var(--orange);
+    font-weight: 600;
+}
+
+.reviewer-note {
+    max-width: 560px;
+    width: 100%;
+    margin-bottom: 1rem;
+    text-align: left;
+    line-height: 1.5;
+}
+
+.consent-step-heading {
+    font-size: 1.05rem;
+    margin: 0 0 0.5rem;
+}
+
+.consent-step-intro {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    margin: 0 0 1rem;
+    line-height: 1.55;
+}
+
+.notifications-proof {
+    margin: 0;
 }
 
 .dash-topbar {
@@ -1492,6 +1584,44 @@ canvas {
     text-decoration: underline;
 }
 
+/* ===== About this service ===== */
+.about-service {
+    width: 100%;
+    max-width: 800px;
+    padding: 0 1.5rem 3rem;
+    margin: 0 auto;
+}
+
+.about-service-card {
+    text-align: left;
+    max-width: 640px;
+    margin: 1.25rem auto 0;
+}
+
+.about-service-card p {
+    font-size: 0.92rem;
+    line-height: 1.65;
+    color: var(--text-secondary);
+    margin: 0 0 1rem;
+}
+
+.about-service-card a {
+    color: var(--orange);
+}
+
+.about-service-note {
+    margin-top: 1rem !important;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.business-blurb {
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: var(--text-secondary);
+    margin: 0 0 1rem;
+}
+
 /* ── Remove Account (swipe + confirm) ── */
 .danger-zone h2 {
     color: #ff6b6b;
@@ -1806,4 +1936,272 @@ canvas {
 
 .btn-back:hover {
     background: var(--orange-hover);
+}
+
+/* ===== SMS Consent Page ===== */
+.sms-consent-page {
+    text-align: left;
+    max-width: 640px;
+}
+
+.sms-consent-page h2 {
+    font-size: 1.3rem;
+    margin-bottom: 0.8rem;
+}
+
+.sms-consent-page h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+}
+
+.sms-consent-page p {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.consent-demo {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 1rem 0;
+}
+
+.consent-demo-step {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+}
+
+.consent-demo-num {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--orange);
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.consent-demo-box {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-sm);
+    padding: 1rem 1.2rem;
+    margin: 0.75rem 0;
+}
+
+.consent-demo-box p {
+    margin: 0.3rem 0;
+}
+
+.consent-demo-box ul {
+    margin: 0.4rem 0;
+    padding-left: 1.2rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.consent-details-list {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    line-height: 1.8;
+    padding-left: 1.2rem;
+}
+
+.consent-links {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.consent-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-sm);
+    background: rgba(232, 119, 34, 0.12);
+    color: var(--orange);
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background 0.2s;
+}
+
+.consent-link:hover {
+    background: rgba(232, 119, 34, 0.22);
+}
+
+/* ===== Public SMS opt-in page ===== */
+.sms-opt-in-page {
+    text-align: left;
+    max-width: 560px;
+    width: 100%;
+}
+
+.business-info h2,
+.sms-sample-message h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0 0 0.75rem;
+    color: var(--text-primary);
+}
+
+.business-info-list {
+    margin: 0 0 1.5rem;
+    display: grid;
+    gap: 0.5rem;
+}
+
+.business-info-list div {
+    display: grid;
+    grid-template-columns: 7rem 1fr;
+    gap: 0.5rem;
+    font-size: 0.88rem;
+}
+
+.business-info-list dt {
+    margin: 0;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.business-info-list dd {
+    margin: 0;
+    color: var(--text-primary);
+}
+
+.business-info-list a {
+    color: var(--orange);
+}
+
+.sms-opt-in-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.sms-opt-in-form.hidden {
+    display: none;
+}
+
+.form-field label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 0.35rem;
+    color: var(--text-primary);
+}
+
+.form-field .required {
+    color: var(--orange);
+}
+
+.form-field input[type="text"],
+.form-field input[type="email"],
+.form-field input[type="tel"] {
+    width: 100%;
+    font-family: 'Rubik', sans-serif;
+    font-size: 1rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-primary);
+}
+
+.form-field input:focus {
+    outline: none;
+    border-color: var(--orange);
+    box-shadow: 0 0 0 2px rgba(232, 119, 34, 0.15);
+}
+
+.sms-consent-checkbox {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    cursor: pointer;
+    font-size: 0.88rem;
+    line-height: 1.55;
+    color: var(--text-secondary);
+}
+
+.sms-consent-checkbox input[type="checkbox"] {
+    margin-top: 0.2rem;
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+    accent-color: var(--orange);
+}
+
+.sms-consent-checkbox-text strong {
+    color: var(--text-primary);
+}
+
+.sms-legal-links {
+    margin: 0;
+    font-size: 0.85rem;
+}
+
+.sms-legal-links a {
+    color: var(--orange);
+    font-weight: 500;
+}
+
+.btn-sms-optin-submit {
+    align-self: flex-start;
+    font-family: 'Rubik', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    padding: 0.65rem 1.5rem;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: var(--orange);
+    color: #fff;
+    cursor: pointer;
+}
+
+.btn-sms-optin-submit:hover {
+    background: var(--orange-hover);
+}
+
+.sms-opt-in-success {
+    padding: 1rem;
+    border-radius: var(--radius-sm);
+    background: rgba(144, 238, 144, 0.12);
+    border: 1px solid rgba(144, 238, 144, 0.35);
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.sms-opt-in-success.hidden {
+    display: none;
+}
+
+.sms-opt-in-success a {
+    color: var(--orange);
+}
+
+.sms-sample-message {
+    margin-top: 1.5rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sample-msg-text {
+    margin: 0;
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    font-style: italic;
 }

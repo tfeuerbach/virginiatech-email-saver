@@ -8,6 +8,7 @@ from kms.kms_manager import KMSManager
 from web.database import db
 from web.models import EncryptedCredential, SchedulerState
 from web.services import email_notifier, sms_notifier
+from web.services.duo_notify import deliver_duo_code, has_duo_code_channel
 from web.services.google_login import GoogleLogin
 
 logger = logging.getLogger(__name__)
@@ -108,20 +109,35 @@ def login_single_user(app, user_id):
 
         email = user.vt_email
         try:
+            if not has_duo_code_channel(user):
+                logger.warning(
+                    "Skipping login for %s — enable email or SMS reminders to receive Duo codes",
+                    email,
+                )
+                return
+
             decrypted = kms_manager.decrypt(user.encrypted_key)
             _, username, password = decrypted.split("|", maxsplit=2)
 
             if user.sms_opt_in and user.phone_number:
                 if sms_notifier.is_configured():
                     sms_notifier.send_login_sms(user.phone_number)
-                    logger.info("SMS sent to %s, waiting 60s before Duo push", user.phone_number)
+                    logger.info("SMS sent to %s, waiting 60s before login", user.phone_number)
                     time.sleep(60)
                 else:
                     logger.debug("Twilio not configured, skipping SMS for %s", email)
 
+            user_id = user.id
+
+            def on_duo_code(code):
+                with app.app_context():
+                    refreshed = db.session.get(EncryptedCredential, user_id)
+                    if refreshed:
+                        deliver_duo_code(refreshed, code)
+
             logger.info("Attempting login for %s (cadence=%dd)", email, user.login_cadence_days)
             login_bot = GoogleLogin()
-            result = login_bot.login(email, username, password)
+            result = login_bot.login(email, username, password, on_duo_code=on_duo_code)
 
             if result["success"]:
                 user.last_login = datetime.utcnow()

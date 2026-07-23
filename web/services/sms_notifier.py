@@ -56,8 +56,7 @@ def send_opt_in_confirmation(to_number: str) -> bool:
         to_number,
         (
             "VT Email Saver: You're now subscribed to login reminders. "
-            "You'll get a text ~1 min before each scheduled login so you "
-            "can approve the Duo push.\n\n"
+            "You'll get a text before each scheduled login with your Duo verification code.\n\n"
             "Reply STOP to unsubscribe."
         ),
     )
@@ -69,7 +68,20 @@ def send_login_sms(to_number: str) -> bool:
         to_number,
         (
             "VT Email Saver: Your scheduled VT Gmail login is about to run. "
-            "Keep your phone handy and approve the Duo push when it arrives.\n\n"
+            "You'll receive your Duo verification code shortly — open Duo Mobile "
+            "and enter it when it arrives.\n\n"
+            "Reply STOP to unsubscribe."
+        ),
+    )
+
+
+def send_duo_code(to_number: str, code: str) -> bool:
+    """Send the Duo passcode the user must enter in Duo Mobile."""
+    return send(
+        to_number,
+        (
+            f"VT Email Saver: Your Duo verification code is {code}. "
+            "Open Duo Mobile and enter this code to approve your login.\n\n"
             "Reply STOP to unsubscribe."
         ),
     )

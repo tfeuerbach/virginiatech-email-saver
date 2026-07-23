@@ -7,7 +7,15 @@
 {% block title %}Dashboard — VT Email Saver{% endblock %}
 
 {% block content %}
-<div class="dash">
+<div class="dash"{% if sample_mode %} data-sample-mode="true"{% endif %}>
+    {% if sample_mode %}
+    <div class="sample-banner">
+        <i class="bi bi-info-circle" aria-hidden="true"></i>
+        This is a sample dashboard — SMS opt-in below matches production
+        (phone number + unchecked consent + Save). No login required.
+        <a href="/sms-consent">SMS notifications</a> · <a href="/">Home</a>
+    </div>
+    {% endif %}
     <!-- Top bar -->
     <header class="dash-topbar">
         <h1 class="dash-title">
@@ -15,8 +23,12 @@
             Dashboard
         </h1>
         <div class="dash-topbar-right">
+            {% if not sample_mode %}
             <span class="dash-user"><i class="bi bi-person-circle" aria-hidden="true"></i> {{ vt_email }}</span>
             <a href="/logout" class="btn-logout" aria-label="Log out">Log out</a>
+            {% else %}
+            <span class="dash-user"><i class="bi bi-person-circle" aria-hidden="true"></i> Sample View</span>
+            {% endif %}
         </div>
     </header>
 
@@ -143,7 +155,10 @@
     <!-- Notifications -->
     <div class="dash-card" id="notifications-card">
         <h2 class="dash-card-title"><i class="bi bi-bell" aria-hidden="true"></i> Notifications</h2>
-        <p class="dash-card-desc">Never miss a Duo push — get reminders before each login.</p>
+        <p class="dash-card-desc">SMS text messages are optional. Email reminders are enabled by default. Enable text messages only if you want Duo codes sent to your phone.</p>
+        {% if notifications_required and not duo_code_channel_ok %}
+        <p class="notification-warning">Enable email or text reminders so we can send your Duo verification code during scheduled logins.</p>
+        {% endif %}
 
         <div class="notification-options">
             <div class="notification-option">
@@ -183,7 +198,7 @@
                 <div class="notification-icon" aria-hidden="true"><i class="bi bi-chat-dots"></i></div>
                 <div class="notification-detail">
                     <strong>Text Message</strong>
-                    <span>Get an SMS before each scheduled login</span>
+                    <span>Get your Duo verification code by text before each login</span>
                 </div>
                 <label class="sms-toggle" for="sms-opt-in-toggle" aria-label="Toggle SMS reminders">
                     <input type="checkbox" id="sms-opt-in-toggle" {% if sms_opt_in %}checked{% endif %}>
@@ -192,28 +207,25 @@
             </div>
         </div>
 
-        <div id="sms-opt-in-panel" class="sms-opt-in-panel" {% if not sms_opt_in %}style="display: none;"{% endif %}>
+        <div id="sms-opt-in-panel" class="sms-opt-in-panel" {% if not sms_opt_in and not sample_mode %}style="display: none;"{% endif %}>
             <div class="sms-phone-row">
                 <label for="sms-phone-input" class="sms-phone-label">Phone number</label>
                 <input type="tel" id="sms-phone-input" class="sms-phone-input"
-                       value="{{ phone_number }}" placeholder="(555) 123-4567"
-                       maxlength="16" autocomplete="tel">
+                       value="{% if not sample_mode %}{{ phone_number }}{% endif %}" placeholder="(555) 123-4567"
+                       maxlength="16" autocomplete="tel" {% if sample_mode %}readonly{% endif %}>
             </div>
-            <div class="sms-consent-text">
-                <p>By enabling text notifications you consent to receive automated
-                SMS reminders from <strong>VT Email Saver</strong>.</p>
-                <ul class="consent-details">
-                    <li>Sent approximately <strong>1 minute before</strong> each scheduled login</li>
-                    <li>Frequency depends on your cadence ({{ min_cadence }}&ndash;{{ max_cadence }} msgs per {{ max_cadence }} days)</li>
-                </ul>
-                <p class="consent-fine-print">Msg &amp; data rates may apply.</p>
-                <div class="consent-actions">
-                    <span>Reply <strong>STOP</strong> to unsubscribe</span>
-                    <span class="consent-sep">&middot;</span>
-                    <a href="#" id="open-privacy-modal" class="privacy-link">Privacy Policy</a>
-                </div>
-            </div>
-            <button id="sms-save-btn" class="btn-sms-save">Save</button>
+            <label class="sms-consent-checkbox" for="sms-consent-checkbox">
+                <input type="checkbox" id="sms-consent-checkbox" {% if sms_opt_in and not sample_mode %}checked{% endif %}>
+                <span class="sms-consent-checkbox-text">
+                    {% include "partials/sms_consent_language.html" %}
+                </span>
+            </label>
+            <p class="sms-legal-links">
+                <a href="{{ url_for('form.terms') }}" target="_blank" rel="noopener noreferrer">Terms of Service</a>
+                &amp;
+                <a href="{{ url_for('form.privacy') }}" target="_blank" rel="noopener noreferrer">Privacy Policy</a>
+            </p>
+            <button id="sms-save-btn" class="btn-sms-save" disabled>Save</button>
             <p id="sms-status" class="cadence-status"></p>
         </div>
 
@@ -292,6 +304,8 @@
         <a href="https://github.com/tfeuerbach/virginiatech-email-saver" target="_blank" rel="noopener noreferrer">View Source</a>
         <span class="dashboard-footer-sep">&middot;</span>
         <a href="#" id="footer-privacy-link" class="privacy-link">Privacy Policy</a>
+        <span class="dashboard-footer-sep">&middot;</span>
+        <a href="{{ url_for('form.terms') }}" target="_blank" rel="noopener noreferrer">Terms of Service</a>
         <span class="dashboard-footer-sep">&middot;</span>
         <a href="https://buymeacoffee.com/tfeuerbach" target="_blank" rel="noopener noreferrer" class="btn-coffee-inline" aria-label="Buy me a coffee">
             <i class="bi bi-cup-hot" aria-hidden="true"></i>
