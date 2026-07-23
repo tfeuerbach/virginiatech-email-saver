@@ -109,3 +109,22 @@ def send_login_reminder(to_email, next_login_utc: datetime, cadence_days: int):
     if ok:
         logger.info("Login reminder sent to %s", to_email)
     return ok
+
+
+def send_duo_code(to_email: str, code: str) -> bool:
+    """Send the Duo passcode for a login in progress."""
+    subject = f"VT Email Saver — Duo Code: {code}"
+    plain = (
+        f"Your VT Email Saver login needs Duo verification.\n\n"
+        f"Duo code: {code}\n\n"
+        "Open the Duo Mobile app and enter this code to approve the login."
+    )
+    html = (
+        "<p>Your VT Email Saver login needs Duo verification.</p>"
+        f'<p style="font-size: 2rem; font-weight: bold; letter-spacing: 0.3em;">{code}</p>'
+        "<p>Open the Duo Mobile app and enter this code to approve the login.</p>"
+    )
+    ok = send_email(to_email, subject, html, plain)
+    if ok:
+        logger.info("Duo code email sent to %s", to_email)
+    return ok

@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}SMS Notifications — VT Email Saver{% endblock %}
+
+{% block meta %}
+    <meta name="description" content="Optional SMS account notifications from VT Email Saver (operated by Thomas Feuerbach).">
+{% endblock %}
+
+{% block content %}
+<main id="main-container">
+    <div class="hero-content">
+        <header class="page-title">
+            <h1>VT Email Saver</h1>
+            <p class="tagline">Optional SMS account notifications</p>
+        </header>
+
+        <div class="card-glass sms-opt-in-page">
+            <section class="business-info">
+                <h2>About this service</h2>
+                <p class="business-blurb">
+                    <strong>VT Email Saver</strong> is a live service operated by
+                    <strong>Thomas Feuerbach</strong>. It schedules automated logins so
+                    Virginia Tech Gmail accounts stay active. Optional SMS messages are
+                    sent only by VT Email Saver — not by Virginia Tech or any third-party platform.
+                </p>
+                <dl class="business-info-list">
+                    <div><dt>Business</dt><dd>VT Email Saver</dd></div>
+                    <div><dt>Operator / sender</dt><dd>Thomas Feuerbach</dd></div>
+                    <div><dt>Website</dt><dd><a href="https://hokiesaver.tfeuerbach.dev">hokiesaver.tfeuerbach.dev</a></dd></div>
+                    <div><dt>Contact</dt><dd><a href="mailto:tfeuerbach@mac.com">tfeuerbach@mac.com</a></dd></div>
+                    <div><dt>SMS purpose</dt><dd>Account notifications — Duo verification codes</dd></div>
+                </dl>
+            </section>
+
+            <h2 class="consent-step-heading">Enable text messages</h2>
+            <p class="consent-step-intro">
+                After you create an account, open your dashboard and go to
+                <strong>Notifications → Text Message</strong>. Enter your phone number,
+                check the consent box below (unchecked by default), and click Save.
+                SMS is optional — the core service works without it.
+            </p>
+
+            <div class="dash-card notifications-proof" id="notifications-card">
+                <h2 class="dash-card-title"><i class="bi bi-bell" aria-hidden="true"></i> Notifications</h2>
+                <p class="dash-card-desc">SMS text messages are optional. Email reminders are enabled by default. Enable text messages only if you want Duo codes sent to your phone.</p>
+
+                <div class="notification-options">
+                    <div class="notification-option sms-option">
+                        <div class="notification-icon" aria-hidden="true"><i class="bi bi-chat-dots"></i></div>
+                        <div class="notification-detail">
+                            <strong>Text Message</strong>
+                            <span>Get your Duo verification code by text before each login</span>
+                        </div>
+                        <label class="sms-toggle" aria-label="Text Message toggle">
+                            <input type="checkbox" checked disabled>
+                            <span class="sms-toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="sms-opt-in-panel">
+                    <div class="sms-phone-row">
+                        <label for="proof-phone" class="sms-phone-label">Phone number</label>
+                        <input type="tel" id="proof-phone" class="sms-phone-input"
+                               value="" placeholder="(555) 123-4567"
+                               maxlength="16" autocomplete="tel" readonly>
+                    </div>
+                    <label class="sms-consent-checkbox" for="proof-consent">
+                        <input type="checkbox" id="proof-consent">
+                        <span class="sms-consent-checkbox-text">
+                            {% include "partials/sms_consent_language.html" %}
+                        </span>
+                    </label>
+                    <p class="sms-legal-links">
+                        <a href="{{ url_for('form.terms') }}">Terms of Service</a>
+                        &amp;
+                        <a href="{{ url_for('form.privacy') }}">Privacy Policy</a>
+                    </p>
+                    <button type="button" class="btn-sms-save" disabled>Save</button>
+                </div>
+            </div>
+
+            <section class="sms-sample-message">
+                <h3>Sample message from VT Email Saver</h3>
+                <p class="sample-msg-text">
+                    "VT Email Saver: Your Duo verification code is 443. Open Duo Mobile
+                    and enter this code to approve your login."
+                </p>
+            </section>
+
+            <div class="consent-links">
+                <a href="{{ url_for('form.index') }}" class="consent-link">
+                    <i class="bi bi-house"></i> Home
+                </a>
+                <a href="{{ url_for('dashboard.sample_dashboard') }}" class="consent-link">
+                    <i class="bi bi-grid-1x2"></i> Sample dashboard
+                </a>
+                <a href="{{ url_for('form.privacy') }}" class="consent-link">
+                    <i class="bi bi-shield-check"></i> Privacy Policy
+                </a>
+                <a href="{{ url_for('form.terms') }}" class="consent-link">
+                    <i class="bi bi-file-text"></i> Terms of Service
+                </a>
+            </div>
+        </div>
+    </div>
+</main>
+{% endblock %}

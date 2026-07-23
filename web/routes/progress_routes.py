@@ -12,7 +12,7 @@ progress_bp = Blueprint("progress", __name__)
 def get_progress_store():
     """Get the shared progress dict (lives on the app object)."""
     if not hasattr(current_app, "progress_updates"):
-        current_app.progress_updates = {"step": 0, "error": ""}
+        current_app.progress_updates = {"step": 0, "error": "", "duo_code": ""}
     return current_app.progress_updates
 
 
@@ -24,10 +24,15 @@ def update_progress():
     Exempt from CSRF — called server-to-server by google_login.py.
     """
     progress_updates = get_progress_store()
-    step = request.json.get("step", 0)
+    data = request.json or {}
+    step = data.get("step", 0)
+    duo_code = data.get("duo_code")
 
     if step > progress_updates["step"]:
         progress_updates["step"] = step
+
+    if duo_code is not None:
+        progress_updates["duo_code"] = duo_code
 
     logger.debug("Progress updated to step: %s", progress_updates["step"])
     return jsonify({"status": "updated", "current_step": progress_updates["step"]})

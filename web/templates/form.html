@@ -98,16 +98,46 @@
             </div>
             <div class="info-card fade-in delay-3">
                 <h3>You stay in the loop</h3>
-                <p>Get an email, text, or calendar reminder before each login so you're ready to approve the Duo push. Toggle notifications on or off from your dashboard.</p>
+                <p>Get an email, text, or calendar reminder before each login so you're ready to enter your Duo verification code. Toggle notifications on or off from your dashboard.</p>
             </div>
+        </div>
+    </section>
+
+    <section id="about-service" class="about-service">
+        <h2 class="section-heading fade-in">About this service</h2>
+        <p class="section-subheading fade-in">A live tool operated by Thomas Feuerbach</p>
+
+        <div class="card-glass about-service-card fade-in">
+            <p>
+                <strong>VT Email Saver</strong> helps Virginia Tech students and alumni keep their
+                university Gmail accounts from being deactivated by scheduling automated logins on
+                a cadence you choose. It is a fully launched service at
+                <a href="https://hokiesaver.tfeuerbach.dev">hokiesaver.tfeuerbach.dev</a>.
+            </p>
+            <dl class="business-info-list">
+                <div><dt>Business name</dt><dd>VT Email Saver</dd></div>
+                <div><dt>Operator</dt><dd>Thomas Feuerbach (sole operator and SMS sender)</dd></div>
+                <div><dt>Contact</dt><dd><a href="mailto:tfeuerbach@mac.com">tfeuerbach@mac.com</a></dd></div>
+                <div><dt>Services</dt><dd>Automated VT Gmail login scheduling; optional email and SMS account notifications (Duo verification codes)</dd></div>
+            </dl>
+            <p class="about-service-note">
+                Text messages, when enabled, are sent only by <strong>VT Email Saver</strong>.
+                They are not sent by Virginia Tech or any other organization.
+                SMS is optional and requires an explicit consent checkbox.
+                <a href="{{ url_for('form.sms_consent') }}">View SMS notification details</a>.
+            </p>
         </div>
     </section>
 
     <footer class="site-footer">
         <small>
-            Created by <a href="https://github.com/tfeuerbach" target="_blank" rel="noopener noreferrer">Thomas Feuerbach</a> |
+            Operated by <a href="mailto:tfeuerbach@mac.com">Thomas Feuerbach</a> |
             <a href="https://github.com/tfeuerbach/virginiatech-email-saver" target="_blank" rel="noopener noreferrer">View Source on GitHub</a> |
             <a href="{{ url_for('form.privacy') }}">Privacy Policy</a>
+            &middot;
+            <a href="{{ url_for('form.terms') }}">Terms of Service</a>
+            &middot;
+            <a href="{{ url_for('form.sms_consent') }}">SMS notifications</a>
         </small>
     </footer>
 {% endblock %}

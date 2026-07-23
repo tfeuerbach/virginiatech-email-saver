@@ -24,16 +24,21 @@ TEST_PASSWORD = "testuser"
 def get_progress_store():
     """Get the shared progress dict (lives on the app object)."""
     if not hasattr(current_app, "progress_updates"):
-        current_app.progress_updates = {"step": 0, "error": ""}
+        current_app.progress_updates = {"step": 0, "error": "", "duo_code": ""}
     return current_app.progress_updates
+
+
+def reset_progress(progress_updates):
+    progress_updates["step"] = 0
+    progress_updates["error"] = ""
+    progress_updates["duo_code"] = ""
 
 
 @form_bp.route("/", methods=["GET"])
 def index():
     """Show the login form."""
     progress_updates = get_progress_store()
-    progress_updates["step"] = 0
-    progress_updates["error"] = ""
+    reset_progress(progress_updates)
     return render_template("form.html")
 
 
@@ -83,8 +88,8 @@ def submit():
         return jsonify({"message": "Login started"})
 
     session["authenticated_email"] = vt_email
+    reset_progress(progress_updates)
     progress_updates["step"] = 1
-    progress_updates["error"] = ""
 
     app = current_app._get_current_object()
 
@@ -140,6 +145,22 @@ def privacy():
     """Public privacy policy page (no auth required)."""
     return render_template(
         "privacy.html",
+        min_cadence=MIN_CADENCE_DAYS,
+        max_cadence=MAX_CADENCE_DAYS,
+    )
+
+
+@form_bp.route("/terms", methods=["GET"])
+def terms():
+    """Public terms of service page (no auth required)."""
+    return render_template("terms.html")
+
+
+@form_bp.route("/sms-consent", methods=["GET"])
+def sms_consent():
+    """Public SMS opt-in disclosure page for Twilio verification."""
+    return render_template(
+        "sms_consent.html",
         min_cadence=MIN_CADENCE_DAYS,
         max_cadence=MAX_CADENCE_DAYS,
     )

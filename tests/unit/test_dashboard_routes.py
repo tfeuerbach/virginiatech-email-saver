@@ -197,12 +197,24 @@ def test_email_opt_in_enable(client):
     assert resp.get_json()["email_opt_in"] is True
 
 
-def test_email_opt_in_disable(client):
+@patch("web.services.duo_notify.sms_notifier.is_configured", return_value=False)
+@patch("web.services.duo_notify.email_notifier.is_configured", return_value=False)
+def test_email_opt_in_disable(mock_email, mock_sms, client):
     seed_user()
     login_user(client)
     resp = client.post("/update_email_opt_in", json={"email_opt_in": False})
     assert resp.status_code == 200
     assert resp.get_json()["email_opt_in"] is False
+
+
+@patch("web.routes.dashboard_routes.sms_notifier.is_configured", return_value=False)
+@patch("web.services.duo_notify.email_notifier.is_configured", return_value=True)
+def test_email_opt_in_disable_blocked_without_other_channel(mock_email, mock_sms, client):
+    seed_user(email_opt_in=True, sms_opt_in=False)
+    login_user(client)
+    resp = client.post("/update_email_opt_in", json={"email_opt_in": False})
+    assert resp.status_code == 400
+    assert "Duo verification code" in resp.get_json()["error"]
 
 
 def test_email_opt_in_user_not_found(client):
@@ -212,7 +224,10 @@ def test_email_opt_in_user_not_found(client):
 
 
 def test_sms_rejects_without_session(client):
-    resp = client.post("/update_sms_preferences", json={"sms_opt_in": True, "phone_number": "5551234567"})
+    resp = client.post(
+        "/update_sms_preferences",
+        json={"sms_opt_in": True, "phone_number": "5551234567", "sms_consent": True},
+    )
     assert resp.status_code == 401
 
 
@@ -221,7 +236,10 @@ def test_sms_opt_in_valid_phone(mock_sms, client):
     mock_sms.is_configured.return_value = False
     seed_user()
     login_user(client)
-    resp = client.post("/update_sms_preferences", json={"sms_opt_in": True, "phone_number": "(555) 123-4567"})
+    resp = client.post(
+        "/update_sms_preferences",
+        json={"sms_opt_in": True, "phone_number": "(555) 123-4567", "sms_consent": True},
+    )
     assert resp.status_code == 200
     data = resp.get_json()
     assert data["sms_opt_in"] is True
@@ -231,7 +249,10 @@ def test_sms_opt_in_valid_phone(mock_sms, client):
 def test_sms_opt_in_invalid_phone(client):
     seed_user()
     login_user(client)
-    resp = client.post("/update_sms_preferences", json={"sms_opt_in": True, "phone_number": "123"})
+    resp = client.post(
+        "/update_sms_preferences",
+        json={"sms_opt_in": True, "phone_number": "123", "sms_consent": True},
+    )
     assert resp.status_code == 400
 
 
@@ -240,9 +261,23 @@ def test_sms_opt_in_sends_confirmation(mock_sms, client):
     mock_sms.is_configured.return_value = True
     seed_user()
     login_user(client)
-    resp = client.post("/update_sms_preferences", json={"sms_opt_in": True, "phone_number": "5551234567"})
+    resp = client.post(
+        "/update_sms_preferences",
+        json={"sms_opt_in": True, "phone_number": "5551234567", "sms_consent": True},
+    )
     assert resp.status_code == 200
     mock_sms.send_opt_in_confirmation.assert_called_once_with("+15551234567")
+
+
+def test_sms_opt_in_requires_consent(client):
+    seed_user()
+    login_user(client)
+    resp = client.post(
+        "/update_sms_preferences",
+        json={"sms_opt_in": True, "phone_number": "5551234567", "sms_consent": False},
+    )
+    assert resp.status_code == 400
+    assert "consent" in resp.get_json()["error"].lower()
 
 
 @patch("web.routes.dashboard_routes.sms_notifier")
@@ -258,7 +293,10 @@ def test_sms_opt_out(mock_sms, client):
 
 def test_sms_user_not_found(client):
     login_user(client, "ghost@vt.edu")
-    resp = client.post("/update_sms_preferences", json={"sms_opt_in": True, "phone_number": "5551234567"})
+    resp = client.post(
+        "/update_sms_preferences",
+        json={"sms_opt_in": True, "phone_number": "5551234567", "sms_consent": True},
+    )
     assert resp.status_code == 404
 
 

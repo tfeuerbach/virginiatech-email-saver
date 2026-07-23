@@ -10,6 +10,41 @@ def test_privacy_page_loads(client):
     assert resp.status_code == 200
 
 
+def test_terms_page_loads(client):
+    resp = client.get("/terms")
+    assert resp.status_code == 200
+
+
+def test_sms_consent_page_loads(client):
+    resp = client.get("/sms-consent")
+    assert resp.status_code == 200
+    assert b"I consent to receive" in resp.data
+    assert b"SMS text messages" in resp.data
+    assert b"Terms of Service" in resp.data
+    assert b"operated by Thomas Feuerbach" in resp.data
+    assert b"proof-consent" in resp.data
+    assert b"About this service" in resp.data
+
+
+def test_homepage_has_business_about(client):
+    resp = client.get("/")
+    assert resp.status_code == 200
+    assert b"About this service" in resp.data
+    assert b"Thomas Feuerbach" in resp.data
+    assert b"tfeuerbach@mac.com" in resp.data
+    assert b"SMS notifications" in resp.data
+
+
+def test_sample_dashboard_shows_unchecked_sms_consent(client):
+    resp = client.get("/sample-dashboard")
+    assert resp.status_code == 200
+    assert b'data-sample-mode="true"' in resp.data
+    assert b"sms-consent-checkbox" in resp.data
+    # Consent checkbox must not be pre-checked on the public sample
+    assert b'id="sms-consent-checkbox" checked' not in resp.data
+    assert b"Phone number" in resp.data
+
+
 def test_submit_missing_fields(client):
     resp = client.post("/submit", json={"vt_email": "test@vt.edu"})
     assert resp.status_code == 400

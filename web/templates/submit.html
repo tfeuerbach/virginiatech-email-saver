@@ -14,6 +14,11 @@
             <canvas id="error-animation" class="animation hidden"></canvas>
         </div>
         <p id="status-message">Storing your credentials securely...</p>
+        <div id="duo-code-display" class="duo-code-display hidden" aria-live="polite">
+            <p class="duo-code-label">Enter in Duo Mobile</p>
+            <p id="duo-code-value" class="duo-code-value"></p>
+            <p class="duo-code-hint">Open the Duo app and type this code to verify</p>
+        </div>
     </div>
 </main>
 {% endblock %}

@@ -2,7 +2,7 @@ services:
   web:
     build: .
     ports:
-      - "5000:5000"
+      - "127.0.0.1:5000:5000"
     depends_on:
       db:
         condition: service_healthy
@@ -30,7 +30,7 @@ services:
       retries: 10
       start_period: 5s
 
-  # Cloudflare Tunnel — exposes the web service to vtemailsaver.tfeuerbach.dev
+  # Cloudflare Tunnel — exposes the web service to hokiesaver.tfeuerbach.dev
   # Set CLOUDFLARE_TUNNEL_TOKEN in .env, then: docker compose --profile tunnel up -d
   tunnel:
     image: cloudflare/cloudflared:latest

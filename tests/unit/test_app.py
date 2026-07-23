@@ -88,7 +88,19 @@ def test_get_progress_works_with_session(client):
     login_user(client)
     resp = client.get("/get_progress")
     assert resp.status_code == 200
-    assert "step" in resp.get_json()
+    data = resp.get_json()
+    assert "step" in data
+    assert "duo_code" in data
+
+
+def test_update_progress_accepts_duo_code(client):
+    resp = client.post("/update_progress", json={"step": 3, "duo_code": "443"})
+    assert resp.status_code == 200
+    with client.session_transaction() as sess:
+        sess["authenticated_email"] = "test@vt.edu"
+    progress = client.get("/get_progress").get_json()
+    assert progress["step"] == 3
+    assert progress["duo_code"] == "443"
 
 
 @mock_decrypt

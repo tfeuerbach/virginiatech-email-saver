@@ -15,7 +15,7 @@ yourself.</p>
 <ul>
     <li><strong>VT email address</strong> &mdash; stored as a plaintext account identifier. This is visible to the site administrator but is only used to identify your account and log in on your behalf.</li>
     <li><strong>VT password</strong> &mdash; encrypted with AWS KMS before it touches the database. The plaintext is never written to disk or logged. It is only decrypted momentarily by the automated login system at login time and discarded immediately after.</li>
-    <li><strong>Phone number</strong> (optional) &mdash; only stored if you opt in to SMS reminders. Shared with Twilio solely for delivering text messages.</li>
+    <li><strong>Phone number</strong> (optional) &mdash; only stored if you opt in to SMS text messages. Phone numbers are transmitted to Twilio only to deliver the messages you requested. <strong>We do not sell, rent, or share SMS opt-in information or phone numbers with third parties.</strong></li>
     <li><strong>Notification email</strong> (optional) &mdash; only stored if you choose to receive reminders at a different address.</li>
 </ul>
 
@@ -28,12 +28,12 @@ yourself.</p>
 
 <h3>SMS notifications</h3>
 <ul>
-    <li>You may opt in to receive automated SMS login reminders from VT Email Saver.</li>
-    <li>Messages are sent approximately 1 minute before each scheduled login attempt.</li>
+    <li>You must explicitly opt in via checkbox to receive SMS text messages from <strong>VT Email Saver</strong> (operated by Thomas Feuerbach). Messages are sent only by VT Email Saver — not by Virginia Tech or any other organization.</li>
+    <li>Messages are automated account notifications containing Duo verification codes needed during scheduled logins.</li>
     <li>Message frequency varies based on your chosen login cadence ({{ min_cadence }}&ndash;{{ max_cadence }} messages per {{ max_cadence }}-day period).</li>
     <li>Standard message and data rates may apply.</li>
     <li>Reply <strong>STOP</strong> to unsubscribe at any time.</li>
-    <li>Your phone number is shared with <a href="https://www.twilio.com/legal/privacy" target="_blank" rel="noopener noreferrer" style="color: var(--orange);">Twilio</a> for message delivery and is not used for any other purpose.</li>
+    <li>Your phone number is used only to deliver SMS messages you opted into via Twilio. We do not sell, rent, or share SMS opt-in information or phone numbers with third parties.</li>
 </ul>
 
 <h3>Data security</h3>

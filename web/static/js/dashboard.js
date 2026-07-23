@@ -3,6 +3,12 @@
 (function () {
     'use strict';
 
+    var isSample = document.querySelector('.dash[data-sample-mode="true"]');
+    if (isSample) {
+        // Public sample for TFV reviewers — display only, no API calls.
+        return;
+    }
+
     var csrf = document.querySelector('meta[name="csrf-token"]').content;
 
     function formatDateTime(utcDateTime) {
@@ -332,60 +338,85 @@
         var toggle = document.getElementById('sms-opt-in-toggle');
         var panel = document.getElementById('sms-opt-in-panel');
         var phoneInput = document.getElementById('sms-phone-input');
+        var consentCheckbox = document.getElementById('sms-consent-checkbox');
         var saveBtn = document.getElementById('sms-save-btn');
         var statusEl = document.getElementById('sms-status');
+
+        function updateSaveState() {
+            if (!saveBtn || !consentCheckbox || !phoneInput) return;
+            var phoneReady = phoneInput.value.replace(/\D/g, '').length >= 10;
+            saveBtn.disabled = !(consentCheckbox.checked && phoneReady);
+        }
 
         toggle.addEventListener('change', function () {
             if (this.checked) {
                 panel.style.display = '';
                 phoneInput.focus();
+                updateSaveState();
             } else {
-                saveSms(false, '');
+                saveSms(false, '', false);
             }
         });
 
+        consentCheckbox.addEventListener('change', updateSaveState);
+        phoneInput.addEventListener('input', updateSaveState);
+
         saveBtn.addEventListener('click', function () {
-            saveSms(true, phoneInput.value);
+            if (!consentCheckbox.checked) {
+                statusEl.textContent = 'Please check the SMS consent box to continue.';
+                statusEl.style.color = '#ff6b6b';
+                return;
+            }
+            saveSms(true, phoneInput.value, true);
         });
 
         phoneInput.addEventListener('keydown', function (e) {
             if (e.key === 'Enter') { e.preventDefault(); saveBtn.click(); }
         });
 
-        function saveSms(optIn, phone) {
+        updateSaveState();
+
+        function saveSms(optIn, phone, consent) {
             saveBtn.disabled = true;
             saveBtn.textContent = 'Saving...';
             statusEl.textContent = '';
 
-            postJson('/update_sms_preferences', { sms_opt_in: optIn, phone_number: phone })
+            postJson('/update_sms_preferences', {
+                sms_opt_in: optIn,
+                phone_number: phone,
+                sms_consent: consent,
+            })
                 .then(function (res) {
                     return res.json().then(function (d) { return { ok: res.ok, data: d }; });
                 })
                 .then(function (result) {
-                    saveBtn.disabled = false;
                     saveBtn.textContent = 'Save';
                     if (!result.ok) {
                         statusEl.textContent = result.data.error || 'Something went wrong';
                         statusEl.style.color = '#ff6b6b';
                         toggle.checked = true;
                         panel.style.display = '';
+                        updateSaveState();
                         return;
                     }
                     statusEl.textContent = result.data.message;
                     statusEl.style.color = '#90ee90';
                     if (result.data.sms_opt_in) {
                         phoneInput.value = result.data.phone_number;
+                        consentCheckbox.checked = true;
                     } else {
                         toggle.checked = false;
                         panel.style.display = 'none';
                         phoneInput.value = '';
+                        consentCheckbox.checked = false;
                     }
+                    updateSaveState();
                 })
                 .catch(function () {
-                    saveBtn.disabled = false;
                     saveBtn.textContent = 'Save';
                     statusEl.textContent = 'Failed to save. Please try again.';
                     statusEl.style.color = '#ff6b6b';
+                    updateSaveState();
                 });
         }
     })();
